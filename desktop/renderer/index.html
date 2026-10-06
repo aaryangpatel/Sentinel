@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sentinel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="auth" class="auth">
+    <div class="auth-card">
+      <p class="eyebrow">Sentinel</p>
+      <h1>Work against a goal, not a blocklist.</h1>
+      <p class="lede">Sign in for personalized tasks, sessions, and analytics.</p>
+      <div class="tabs">
+        <button type="button" id="tab-login" class="tab on">Sign in</button>
+        <button type="button" id="tab-register" class="tab">Create account</button>
+      </div>
+      <label>Email</label>
+      <input id="auth-user" type="email" autocomplete="username">
+      <label>Password</label>
+      <input id="auth-pass" type="password" autocomplete="current-password">
+      <p id="auth-error" class="error"></p>
+      <button type="button" id="auth-submit" class="primary">Continue</button>
+    </div>
+  </div>
+
+  <div id="shell" class="shell hidden">
+    <aside class="rail">
+      <div class="brand">
+        <span class="mark"></span>
+        <div>
+          <strong>Sentinel</strong>
+          <em id="who"></em>
+        </div>
+      </div>
+      <nav>
+        <button type="button" data-view="focus" class="nav on">Focus</button>
+        <button type="button" data-view="analytics" class="nav">Analytics</button>
+        <button type="button" data-view="settings" class="nav">Settings</button>
+      </nav>
+      <button type="button" id="logout" class="ghost">Sign out</button>
+    </aside>
+
+    <main>
+      <div class="titlebar"></div>
+
+      <section id="view-focus" class="view">
+        <header class="page-head">
+          <div>
+            <p class="eyebrow">Live session</p>
+            <h2>What are you doing right now?</h2>
+          </div>
+          <span id="focus-pill" class="pill">Idle</span>
+        </header>
+
+        <div class="now">
+          <div class="now-kicker">Frontmost</div>
+          <div id="now-app" class="now-app">Waiting for an app…</div>
+          <div id="now-meta" class="now-meta">Grant Accessibility & Screen Recording if titles stay blank.</div>
+          <div id="now-class" class="now-class">—</div>
+          <p id="now-reason" class="now-reason"></p>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <label for="goal">Task goal</label>
+            <textarea id="goal" rows="3" placeholder="Researching linear algebra homework"></textarea>
+            <div class="row">
+              <button type="button" id="toggle" class="primary">Start focus</button>
+              <span id="grace-line" class="quiet"></span>
+            </div>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Why this exists</p>
+            <p class="copy">A hard-coded list of apps and websites to block is not useful. Sentinel reads the app, the site, and the window against <em>this</em> task, then tells you immediately when you drift.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-analytics" class="view hidden">
+        <header class="page-head">
+          <div>
+            <p class="eyebrow">Your work</p>
+            <h2>Per task, per day</h2>
+          </div>
+        </header>
+        <div class="filters">
+          <label>Day <input id="day" type="date"></label>
+          <label>Task
+            <select id="task-filter">
+              <option value="">All tasks</option>
+            </select>
+          </label>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="stat-on">0m</b><span>On task</span></div>
+          <div class="stat"><b id="stat-off">0m</b><span>Off task</span></div>
+          <div class="stat"><b id="stat-pct">—</b><span>Focus share</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <p class="eyebrow">Mix</p>
+            <canvas id="chart" width="360" height="220"></canvas>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Off-task apps & sites</p>
+            <ol id="off-list" class="rank"></ol>
+          </div>
+        </div>
+        <div class="card">
+          <p class="eyebrow">By task</p>
+          <table>
+            <thead>
+              <tr><th>Task</th><th>On</th><th>Off</th><th>Ambiguous</th></tr>
+            </thead>
+            <tbody id="task-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="view-settings" class="view hidden">
+        <header class="page-head">
+          <div>
+            <p class="eyebrow">This Mac</p>
+            <h2>Settings</h2>
+          </div>
+        </header>
+        <div class="card stack">
+          <label>Classifier
+            <select id="provider">
+              <option value="groq">Groq (free key)</option>
+              <option value="gemini">Gemini</option>
+              <option value="ollama">Ollama (local)</option>
+            </select>
+          </label>
+          <label>API key <input id="api-key" type="password" placeholder="gsk_..."></label>
+          <label>Model <input id="model" type="text" placeholder="openai/gpt-oss-20b"></label>
+          <label>Ollama URL <input id="ollama-url" type="text"></label>
+          <label>Grace before the question (seconds)
+            <input id="grace" type="range" min="15" max="120" step="5">
+            <span id="grace-val">45s</span>
+          </label>
+          <p class="quiet">The model only sees your goal, app name, site, and window title. macOS also needs Accessibility, Screen Recording, and Automation for the frontmost window.</p>
+          <button type="button" id="save-settings" class="primary">Save settings</button>
+          <p id="settings-saved" class="quiet"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
