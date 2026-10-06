@@ -1,0 +1,57 @@
+{
+  "name": "sentinel",
+  "version": "2.0.0",
+  "private": true,
+  "author": "Aaryan Patel",
+  "description": "Desktop focus assistant that classifies any frontmost app and website against your goal.",
+  "main": "main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "sentinel": "electron .",
+    "dist:mac": "node scripts/prepare-config.js && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac"
+  },
+  "build": {
+    "appId": "app.sentinel.focus",
+    "productName": "Sentinel",
+    "artifactName": "Sentinel-${version}.${ext}",
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "preload.js",
+      "firebase-config.example.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/firebase-pack.json",
+        "to": "firebase-config.json"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Sentinel reads the frontmost app and browser tab to classify it against your goal.",
+        "NSScreenCaptureUsageDescription": "Sentinel reads window titles. It does not save screenshots."
+      }
+    },
+    "dmg": {
+      "title": "Install Sentinel",
+      "icon": "build/icon.icns"
+    }
+  },
+  "devDependencies": {
+    "electron": "^35.7.5",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0"
+  }
+}
