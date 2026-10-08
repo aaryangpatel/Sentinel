@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sentinel alert</title>
+  <style>
+    html, body { margin: 0; background: transparent; font: 14px/1.4 "Avenir Next", sans-serif; color: #ece8dd; }
+    .card {
+      margin: 8px;
+      background: #1b1f27;
+      border: 1px solid #c56b56;
+      padding: 14px 16px;
+    }
+    .kicker { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #c56b56; margin: 0 0 6px; }
+    h1 { font: 20px/1.2 Iowan Old Style, Palatino, Georgia, serif; margin: 0 0 6px; font-weight: 400; }
+    p { margin: 0 0 8px; color: #cfc9bc; }
+    textarea {
+      width: 100%; box-sizing: border-box; min-height: 70px;
+      background: #121418; color: #ece8dd; border: 1px solid #2a303a; padding: 8px;
+    }
+    button { margin-top: 8px; background: #c4a35a; border: 0; padding: 8px 12px; font-weight: 600; cursor: pointer; }
+    .count { font-size: 28px; color: #c4a35a; }
+    .hidden { display: none; }
+    #gate-error { color: #c56b56; }
+  </style>
+</head>
+<body>
+  <div id="toast" class="card">
+    <p class="kicker">Off track</p>
+    <h1 id="toast-title">This is not your task</h1>
+    <p id="toast-reason"></p>
+  </div>
+  <div id="gate" class="card hidden">
+    <p class="kicker">Reflection</p>
+    <h1>Does this still match?</h1>
+    <p id="gate-reason"></p>
+    <p id="gate-q"></p>
+    <textarea id="answer" placeholder="One honest sentence."></textarea>
+    <p id="gate-error" class="hidden"></p>
+    <button type="button" id="submit">Submit</button>
+  </div>
+  <div id="brk" class="card hidden">
+    <p class="kicker">Break</p>
+    <h1>Step away</h1>
+    <p class="count" id="count">2:00</p>
+  </div>
+  <script src="overlay.js"></script>
+</body>
+</html>
