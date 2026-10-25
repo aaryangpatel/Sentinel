@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Sentinel alert</title>
   <style>
-    html, body { margin: 0; background: transparent; font: 14px/1.4 "Avenir Next", sans-serif; color: #ece8dd; }
+    html, body { margin: 0; width: 100%; height: 100%; background: transparent; font: 14px/1.4 "Avenir Next", sans-serif; color: #ece8dd; }
     .card {
       margin: 8px;
       background: #1b1f27;
@@ -18,10 +18,34 @@
       width: 100%; box-sizing: border-box; min-height: 70px;
       background: #121418; color: #ece8dd; border: 1px solid #2a303a; padding: 8px;
     }
-    button { margin-top: 8px; background: #c4a35a; border: 0; padding: 8px 12px; font-weight: 600; cursor: pointer; }
-    .count { font-size: 28px; color: #c4a35a; }
+    button { margin-top: 8px; background: #c4a35a; border: 0; padding: 10px 16px; font-weight: 600; cursor: pointer; }
     .hidden { display: none; }
     #gate-error { color: #c56b56; }
+    .reset {
+      margin: 8px;
+      min-height: calc(100vh - 16px);
+      background: #1b1f27;
+      border: 1px solid #c4a35a;
+      padding: 28px 24px 24px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .reset h1 { font-size: 26px; }
+    .orb {
+      width: 88px;
+      height: 88px;
+      margin: 18px auto;
+      border: 3px solid #c4a35a;
+      border-radius: 99px;
+      transform: scale(0.72);
+      animation: breathe 8s ease-in-out infinite;
+    }
+    .phase { color: #c4a35a; letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; }
+    .count { font-size: 22px; color: #c4a35a; }
+    @keyframes breathe {
+      0%, 100% { transform: scale(0.72); }
+      50% { transform: scale(1.08); }
+    }
   </style>
 </head>
 <body>
@@ -39,10 +63,14 @@
     <p id="gate-error" class="hidden"></p>
     <button type="button" id="submit">Submit</button>
   </div>
-  <div id="brk" class="card hidden">
-    <p class="kicker">Break</p>
-    <h1>Step away</h1>
-    <p class="count" id="count">2:00</p>
+  <div id="brk" class="reset hidden">
+    <p class="kicker">Reset</p>
+    <h1>Come back to the work</h1>
+    <p id="brk-goal"></p>
+    <div class="orb" aria-hidden="true"></div>
+    <p class="phase" id="phase">Inhale</p>
+    <p class="count" id="count">0:18</p>
+    <p>Inhale for 4. Exhale for 4.</p>
   </div>
   <script src="overlay.js"></script>
 </body>

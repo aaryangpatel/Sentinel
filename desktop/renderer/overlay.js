@@ -11,15 +11,20 @@ function hideAll() {
 }
 
 let breakTimer = null;
+let phaseTimer = null;
 
 function clearBreak() {
   if (breakTimer) {
     clearTimeout(breakTimer);
     breakTimer = null;
   }
+  if (phaseTimer) {
+    clearInterval(phaseTimer);
+    phaseTimer = null;
+  }
 }
 
-window.sentinel.onToast((payloa) => {
+window.sentinel.onToast((payload) => {
   clearBreak();
   show("toast");
   const where = payload.domain || payload.app;
@@ -37,9 +42,19 @@ window.sentinel.onGate((payload) => {
   document.getElementById("answer").value = "";
 });
 
-window.sentinel.onBreak((seconds) => {
+window.sentinel.onBreak((payload) => {
   clearBreak();
+  const seconds = payload && payload.seconds ? payload.seconds : 18;
+  const goal = payload && payload.goal ? payload.goal : "";
   show("brk");
+  document.getElementById("brk-goal").textContent = goal ? "Goal: " + goal : "";
+  const phase = document.getElementById("phase");
+  let inhale = true;
+  phase.textContent = "Inhale";
+  phaseTimer = setInterval(() => {
+    inhale = !inhale;
+    phase.textContent = inhale ? "Inhale" : "Exhale";
+  }, 4000);
   let left = seconds;
   const node = document.getElementById("count");
   const tick = () => {
@@ -47,6 +62,7 @@ window.sentinel.onBreak((seconds) => {
     const s = left % 60;
     node.textContent = m + ":" + String(s).padStart(2, "0");
     if (left <= 0) {
+      clearBreak();
       window.sentinel.finishBreak();
       return;
     }
