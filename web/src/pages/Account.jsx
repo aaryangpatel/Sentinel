@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut
-} from "firebase/auth";
+import { Navigate } from "react-router-dom";
+import Layout from "../Layout.jsx";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection,
   query,
@@ -17,7 +13,7 @@ import {
   updateDoc
 } from "firebase/firestore";
 import Chart from "chart.js/auto";
-import { auth, db, firebaseReady, dmgUrl } from "../firebase.js";
+import { auth, db, firebaseReady } from "../firebase.js";
 import { createCircle, joinCircle, listCircles, fmtMin as formatMinutes } from "../circles.js";
 
 const COMPANION_PRESETS = ["Spotify", "Music", "Notes", "Calendar", "Notion", "Obsidian", "Messages", "Slack"];
@@ -51,11 +47,7 @@ function dayBounds(dayKey) {
 }
 
 export default function Account() {
-  const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(undefined);
   const [day, setDay] = useState(todayKey());
   const [taskId, setTaskId] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -79,6 +71,7 @@ export default function Account() {
 
   useEffect(() => {
     if (!firebaseReady) {
+      setUser(null);
       return undefined;
     }
     return onAuthStateChanged(auth, (next) => setUser(next));
@@ -301,68 +294,23 @@ export default function Account() {
     }
   }
 
-  async function submit(event) {
-    event.preventDefault();
-    setError("");
-    if (!firebaseReady) {
-      setError("Add VITE_FIREBASE_* keys in Vercel (or web/.env) to enable accounts.");
-      return;
-    }
-    try {
-      if (mode === "register") {
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        await setDoc(doc(db, "users", cred.user.uid), {
-          email: email.trim(),
-          settings: {
-            provider: "groq",
-            model: "openai/gpt-oss-20b",
-            graceSeconds: 45,
-            companionApps: DEFAULT_COMPANIONS,
-            companionSites: []
-          },
-          createdAt: Date.now()
-        });
-      } else {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
-      }
-    } catch (err) {
-      setError(err.message || "Could not sign in.");
-    }
-  }
-
   const total = stats.onMs + stats.offMs;
   const offRows = stats.apps.concat(stats.domains);
 
+  if (user === undefined) {
+    return (
+      <Layout>
+        <p className="quiet">Loading…</p>
+      </Layout>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
   return (
-    <>
-      <header className="nav">
-        <Link className="logo" to="/"><span className="mark" />Sentinel</Link>
-        <nav>
-          <a href={dmgUrl}>Download for Mac</a>
-          <Link className="btn" to="/#download">Get the app</Link>
-        </nav>
-      </header>
-
+    <Layout>
       <div className="account-shell">
-        {!user && (
-          <form className="auth-box" onSubmit={submit}>
-            <p className="eyebrow">Account</p>
-            <h1>See your focus from any browser.</h1>
-            <p className="lede">Same Firebase login as the Mac app. Analytics are per day and per task.</p>
-            <div className="cta" style={{ marginTop: 0 }}>
-              <button type="button" className="btn" onClick={() => setMode("login")}>Sign in</button>
-              <button type="button" className="btn ghost" onClick={() => setMode("register")}>Create account</button>
-            </div>
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
-            <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-            <p className="error">{error || (!firebaseReady ? "Set VITE_FIREBASE_* environment variables before accounts will work." : "")}</p>
-            <button type="submit" className="btn lg">Continue</button>
-          </form>
-        )}
-
-        {user && (
           <div>
             <div className="toolbar">
               <div>
@@ -509,8 +457,7 @@ export default function Account() {
               ))}
             </div>
           </div>
-        )}
       </div>
-    </>
+    </Layout>
   );
 }
