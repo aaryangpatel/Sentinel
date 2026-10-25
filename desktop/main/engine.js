@@ -1,9 +1,8 @@
 "use strict";
 
-const { currentActivity } = require("./watcher");
+const { currentActivity, interruptActivity } = require("./watcher");
 const classify = require("./classify");
 
-const COOLDOWN_MS = 10 * 60 * 1000;
 const POLL_MS = 2000;
 
 class Engine {
@@ -12,7 +11,7 @@ class Engine {
     this.store = store;
     this.timer = null;
     this.userId = null;
-    this.userSettings = { provider: "groq", graceSeconds: 45 };
+    this.userSettings = { provider: "groq", graceSeconds: 45, companionApps: ["Spotify", "Music", "Notes"], companionSites: [] };
     this.task = null;
     this.focus = false;
     this.busy = false;
@@ -24,8 +23,10 @@ class Engine {
     this.lastActivity = null;
     this.segmentStart = 0;
     this.segmentMeta = null;
-    this.cooldowns = {};
     this.toastShownFor = "";
+    this.justifications = {};
+    this.gatedFingerprint = "";
+    this.priorOffTask = false;
   }
 
   setUser(userId, settings) {
@@ -36,11 +37,23 @@ class Engine {
   }
 
   settings() {
-    return this.userSettings || { provider: "groq", graceSeconds: 45 };
+    return this.userSettings || { provider: "groq", graceSeconds: 45, companionApps: ["Spotify", "Music", "Notes"], companionSites: [] };
+  }
+
+  memoryKey(activity) {
+    return (activity.app + "|" + (activity.domain || activity.app)).toLowerCase();
+  }
+
+  fingerprint(activity) {
+    return `${activity.app}|${activity.domain}|${activity.pageKey || activity.title || ""}`;
   }
 
   async startFocus(goal) {
-    const task = await this.store.createTask(this.userId, goal);
+    const nextGoal = String(goal || "").trim();
+    if (!this.task || this.task.goal !== nextGoal) {
+      this.justifications = {};
+    }
+    const task = await this.store.createTask(this.userId, nextGoal);
     this.task = task;
     this.focus = true;
     this.gateOpen = false;
@@ -48,6 +61,8 @@ class Engine {
     this.lastFingerprint = "";
     this.lastClass = "";
     this.toastShownFor = "";
+    this.gatedFingerprint = "";
+    this.priorOffTask = false;
     await this.flushSegment();
     this.emit();
     return task;
@@ -59,6 +74,7 @@ class Engine {
     this.gateOpen = false;
     this.offSince = null;
     this.segmentMeta = null;
+    this.gatedFingerprint = "";
     this.hooks.onHide();
     this.emit();
   }
@@ -76,14 +92,6 @@ class Engine {
       clearInterval(this.timer);
       this.timer = null;
     }
-  }
-
-  fingerprint(activity) {
-    return `${activity.app}|${activity.domain}|${activity.title}`;
-  }
-
-  cooldownKey(activity) {
-    return activity.app + "|" + activity.domain;
   }
 
   async flushSegment() {
@@ -105,11 +113,15 @@ class Engine {
     this.hooks.onStatus(this.status());
   }
 
+  graceSeconds() {
+    const base = this.settings().graceSeconds || 45;
+    return this.priorOffTask ? Math.min(base, 15) : base;
+  }
+
   status() {
-    const settings = this.settings();
     let graceRemaining = null;
     if (this.focus && this.lastClass === "off-task" && this.offSince) {
-      graceRemaining = Math.max(0, Math.round((settings.graceSeconds || 45) - (Date.now() - this.offSince) / 1000));
+      graceRemaining = Math.max(0, Math.round(this.graceSeconds() - (Date.now() - this.offSince) / 1000));
     }
     return {
       focus: this.focus,
@@ -124,12 +136,12 @@ class Engine {
   }
 
   async tick() {
-    const activity = currentActivity();
+    const activity = await currentActivity();
     if (activity && !activity.ignored) {
       this.lastActivity = activity;
     }
     this.emit();
-    if (!this.focus || this.busy || this.gateOpen || !this.task) {
+    if (!this.focus || this.busy || !this.task) {
       return;
     }
     if (!activity || activity.ignored) {
@@ -137,13 +149,15 @@ class Engine {
     }
 
     const fp = this.fingerprint(activity);
-    const now = Date.now();
-    const key = this.cooldownKey(activity);
-    if (this.cooldowns[key] && this.cooldowns[key] > now && fp === this.lastFingerprint) {
-      return;
-    }
-    if (this.cooldowns[key] && this.cooldowns[key] <= now) {
-      delete this.cooldowns[key];
+    if (this.gateOpen) {
+      if (this.gatedFingerprint && fp !== this.gatedFingerprint) {
+        this.gateOpen = false;
+        this.gatedFingerprint = "";
+        this.offSince = null;
+        this.hooks.onHide();
+      } else {
+        return;
+      }
     }
 
     if (fp === this.lastFingerprint && this.lastClass === "off-task") {
@@ -157,7 +171,8 @@ class Engine {
     this.busy = true;
     try {
       const settings = this.settings();
-      const result = await classify.classifyActivity(settings, this.task.goal, activity);
+      const memory = this.justifications[this.memoryKey(activity)];
+      const result = await classify.classifyActivity(settings, this.task.goal, activity, memory);
       await this.flushSegment();
       this.segmentMeta = {
         userId: this.userId,
@@ -172,7 +187,7 @@ class Engine {
       this.lastClass = result.classification;
       this.lastReason = result.reason;
       if (result.classification === "off-task") {
-        this.offSince = this.offSince || Date.now();
+        this.offSince = Date.now();
         if (this.toastShownFor !== fp) {
           this.toastShownFor = fp;
           this.hooks.onToast({
@@ -185,6 +200,9 @@ class Engine {
       } else {
         this.offSince = null;
         this.toastShownFor = "";
+        if (result.classification === "on-task") {
+          this.priorOffTask = false;
+        }
       }
       this.emit();
       if (result.classification === "off-task") {
@@ -196,19 +214,15 @@ class Engine {
   }
 
   async maybeGate(activity) {
-    const settings = this.settings();
-    const key = this.cooldownKey(activity);
-    if (this.cooldowns[key] && this.cooldowns[key] > Date.now()) {
-      return;
-    }
     if (!this.offSince) {
       return;
     }
-    if ((Date.now() - this.offSince) / 1000 < (settings.graceSeconds || 45)) {
+    if ((Date.now() - this.offSince) / 1000 < this.graceSeconds()) {
       return;
     }
-    const question = await classify.generateQuestion(settings, this.task.goal, activity, this.lastReason);
+    const question = await classify.generateQuestion(this.settings(), this.task.goal, activity, this.lastReason);
     this.gateOpen = true;
+    this.gatedFingerprint = this.fingerprint(activity);
     this.hooks.onGate({
       goal: this.task.goal,
       reason: this.lastReason,
@@ -223,8 +237,7 @@ class Engine {
     if (!this.task || !this.lastActivity) {
       return;
     }
-    const settings = this.settings();
-    const judged = await classify.judgeAnswer(settings, this.task.goal, this.lastActivity, answer);
+    const judged = await classify.judgeAnswer(this.settings(), this.task.goal, this.lastActivity, answer);
     if (!judged.ok) {
       return judged;
     }
@@ -240,23 +253,37 @@ class Engine {
       reason: judged.reason
     });
     if (judged.verdict === "justified") {
-      this.cooldowns[this.cooldownKey(this.lastActivity)] = Date.now() + COOLDOWN_MS;
+      this.justifications[this.memoryKey(this.lastActivity)] = {
+        answer: String(answer || "").trim(),
+        title: this.lastActivity.title || "",
+        pageKey: this.lastActivity.pageKey || "",
+        domain: this.lastActivity.domain || ""
+      };
       this.gateOpen = false;
+      this.gatedFingerprint = "";
       this.offSince = null;
+      this.priorOffTask = false;
       this.lastClass = "on-task";
       this.lastReason = judged.reason;
       this.hooks.onHide();
       this.emit();
       return judged;
     }
-    this.hooks.onBreak(120);
+    this.priorOffTask = true;
+    interruptActivity(this.lastActivity);
+    this.hooks.onBreak({
+      seconds: 18,
+      goal: this.task.goal
+    });
     return judged;
   }
 
   finishBreak() {
     this.gateOpen = false;
+    this.gatedFingerprint = "";
     this.offSince = null;
     this.lastFingerprint = "";
+    this.priorOffTask = true;
     this.emit();
   }
 }
