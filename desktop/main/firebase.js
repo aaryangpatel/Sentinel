@@ -28,8 +28,59 @@ const DEFAULT_SETTINGS = {
   apiKey: "",
   model: "openai/gpt-oss-20b",
   ollamaUrl: "http://localhost:11434/v1/chat/completions",
-  graceSeconds: 45
+  graceSeconds: 45,
+  companionApps: ["Spotify", "Music", "Notes"],
+  companionSites: []
 };
+
+function normalizeCompanionApps(list) {
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(list) ? list : []).forEach((name) => {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) {
+      return;
+    }
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    out.push(trimmed);
+  });
+  return out;
+}
+
+function normalizeSite(value) {
+  let host = String(value || "").trim().toLowerCase();
+  host = host.replace(/^https?:\/\//, "");
+  host = host.replace(/^www\./, "");
+  return host.split("/")[0].split("?")[0].split(":")[0];
+}
+
+function normalizeCompanionSites(list) {
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(list) ? list : []).forEach((name) => {
+    const host = normalizeSite(name);
+    if (!host || host.indexOf(".") === -1) {
+      return;
+    }
+    if (seen.has(host)) {
+      return;
+    }
+    seen.add(host);
+    out.push(host);
+  });
+  return out;
+}
+
+function mergeSettings(base, extra) {
+  const next = Object.assign({}, DEFAULT_SETTINGS, base || {}, extra || {});
+  next.companionApps = normalizeCompanionApps(next.companionApps);
+  next.companionSites = normalizeCompanionSites(next.companionSites);
+  return next;
+}
 
 let app = null;
 let auth = null;
@@ -138,19 +189,20 @@ function publicUser(uid, email, settings) {
   };
 }
 
-async function ensureProfile(uid, email) {
+async function ensureProfile(uid, email, initialSettings) {
   const ref = doc(firestore, "users", uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
+    const settings = mergeSettings(DEFAULT_SETTINGS, initialSettings);
     await setDoc(ref, {
       email,
-      settings: DEFAULT_SETTINGS,
+      settings,
       createdAt: Date.now()
     });
-    return publicUser(uid, email, DEFAULT_SETTINGS);
+    return publicUser(uid, email, settings);
   }
   const data = snap.data();
-  return publicUser(uid, data.email || email, Object.assign({}, DEFAULT_SETTINGS, data.settings || {}));
+  return publicUser(uid, data.email || email, mergeSettings(data.settings));
 }
 
 async function restoreUser() {
@@ -170,14 +222,14 @@ async function restoreUser() {
   });
 }
 
-async function register(email, password) {
+async function register(email, password, extras) {
   const ready = init();
   if (!ready.ok) {
     return ready;
   }
   try {
     const cred = await createUserWithEmailAndPassword(auth, String(email || "").trim(), password);
-    return { ok: true, user: await ensureProfile(cred.user.uid, cred.user.email) };
+    return { ok: true, user: await ensureProfile(cred.user.uid, cred.user.email, extras) };
   } catch (err) {
     return { ok: false, error: authError(err) };
   }
@@ -207,7 +259,7 @@ async function saveSettings(uid, settings) {
   const ref = doc(firestore, "users", uid);
   const snap = await getDoc(ref);
   const prev = snap.exists() ? snap.data() : {};
-  const next = Object.assign({}, DEFAULT_SETTINGS, prev.settings || {}, settings);
+  const next = mergeSettings(prev.settings, settings);
   await setDoc(ref, {
     email: prev.email || (auth.currentUser && auth.currentUser.email) || "",
     settings: next,

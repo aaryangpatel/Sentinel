@@ -68,9 +68,27 @@ function showOverlay(height) {
     return;
   }
   const display = screen.getPrimaryDisplay().workArea;
+  overlayWindow.setAlwaysOnTop(true, "floating");
   overlayWindow.setSize(420, height);
   overlayWindow.setPosition(display.x + display.width - 440, display.y + 16);
   overlayWindow.showInactive();
+}
+
+function showReset() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    return;
+  }
+  const display = screen.getPrimaryDisplay().workArea;
+  const width = 420;
+  const height = 420;
+  overlayWindow.setAlwaysOnTop(true, "floating");
+  overlayWindow.setSize(width, height);
+  overlayWindow.setPosition(
+    display.x + Math.round((display.width - width) / 2),
+    display.y + Math.round((display.height - height) / 2)
+  );
+  overlayWindow.show();
+  overlayWindow.focus();
 }
 
 function hideOverlay() {
@@ -110,9 +128,9 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send("gate", payload);
       }
     },
-    onBreak: (seconds) => {
-      sendOverlay("break", seconds);
-      showOverlay(180);
+    onBreak: (payload) => {
+      sendOverlay("break", payload);
+      showReset();
     },
     onHide: () => {
       hideOverlay();
@@ -147,8 +165,8 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
-ipcMain.handle("auth:register", async (_event, email, password) => {
-  const result = await firebase.register(email, password);
+ipcMain.handle("auth:register", async (_event, email, password, companionApps) => {
+  const result = await firebase.register(email, password, { companionApps });
   if (result.ok) {
     attachUser(result.user);
   }
@@ -167,6 +185,7 @@ ipcMain.handle("auth:me", () => currentUser);
 
 ipcMain.handle("auth:logout", async () => {
   await engine.stopFocus();
+  hideOverlay();
   await firebase.logout();
   currentUser = null;
   engine.setUser(null);
@@ -187,12 +206,20 @@ ipcMain.handle("focus:start", async (_event, goal) => {
     return { ok: false, error: "Not signed in." };
   }
   const task = await engine.startFocus(goal);
+  await firebase.setPresence(currentUser.id, currentUser.email, {
+    focus: true,
+    goal: task.goal
+  });
   return { ok: true, task };
 });
 
 ipcMain.handle("focus:stop", async () => {
   await engine.stopFocus();
   hideOverlay();
+  if (currentUser) {
+    await firebase.setPresence(currentUser.id, currentUser.email, { focus: false, goal: "" });
+    await firebase.publishWeekly(currentUser.id, currentUser.email);
+  }
   return { ok: true };
 });
 
@@ -214,4 +241,23 @@ ipcMain.handle("tasks:list", async () => {
     return [];
   }
   return firebase.listTasks(currentUser.id);
+});
+ipcMain.handle("circles:create", async (_event, name) => {
+  if (!currentUser) {
+    return { ok: false, error: "Not signed in." };
+  }
+  return { ok: true, circle: await firebase.createCircle(currentUser.id, currentUser.email, name) };
+});
+ipcMain.handle("circles:join", async (_event, code) => {
+  if (!currentUser) {
+    return { ok: false, error: "Not signed in." };
+  }
+  return firebase.joinCircle(currentUser.id, currentUser.email, code);
+});
+ipcMain.handle("circles:list", async () => {
+  if (!currentUser) {
+    return [];
+  }
+  await firebase.publishWeekly(currentUser.id, currentUser.email);
+  return firebase.listCircles(currentUser.id);
 });
