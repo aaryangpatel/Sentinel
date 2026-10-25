@@ -3,18 +3,19 @@
 const CLASSIFY_SYSTEM = `You classify whether a Mac window matches a student's stated goal.
 Return JSON only: {"classification":"on-task"|"ambiguous"|"off-task","reason":"one short sentence"}
 Rules:
-- Judge this window against this goal, not the app or site's reputation.
-- A YouTube lecture can be on-task; a gameplay clip is off-task.
-- IDEs, docs, and notes are on-task when they could reasonably serve the goal.
-- Chat, games, and social feeds are off-task unless the title clearly serves the goal.
-- If you cannot tell, use ambiguous. Never treat unknown as off-task.`;
+- Use the page title, site, and URL path. Do not say the title is empty if a site or video title is present.
+- Judge this specific page against this goal, not the brand. YouTube lectures can be on-task; gameplay, shorts, music videos, and "recommended" fluff are off-task.
+- reddit, tiktok, instagram, twitter/x, discord, netflix, twitch, and games are off-task unless the title clearly serves the goal.
+- IDEs, docs, notes, Wikipedia, Khan Academy, GitHub, and school tools are on-task when they could reasonably serve the goal.
+- If the student already justified this same site, honor that only when THIS title still matches that reason. A new unrelated video or thread is a new decision.
+- If you have a real title or URL path, pick on-task or off-task. Use ambiguous only when there is truly no title, site, or path.`;
 
 const QUESTION_SYSTEM = `Return JSON only: {"question":"..."}.
-Ask one specific question about how this window connects to the goal. No preamble.`;
+Ask one specific question about how THIS page or video connects to the goal. Mention the title if you have it. No preamble.`;
 
-const JUDGE_SYSTEM = `Decide if the student's sentence honestly ties this window to the goal.
+const JUDGE_SYSTEM = `Decide if the student's sentence honestly ties THIS window to the goal.
 Return JSON only: {"verdict":"justified"|"not_justified","reason":"one short sentence"}
-justified only if the link is specific and checkable.
+justified only if the link is specific and checkable for this title/site.
 "idk", "just watching", "bored", "I need a break", or a vague "it's related" are not_justified.`;
 
 function parseJsonObject(text) {
@@ -77,13 +78,31 @@ function assistantContent(raw) {
   return parsed.choices[0].message.content || raw;
 }
 
-function windowContext(goal, activity) {
-  return [
+function windowContext(goal, activity, memory) {
+  const lines = [
     "goal: " + (goal || "(none)"),
     "app: " + (activity.app || "(none)"),
     "site: " + (activity.domain || "(none)"),
-    "window title: " + (activity.title || "(none)")
-  ].join("\n");
+    "url path: " + (activity.path || "(none)"),
+    "page title: " + (activity.title || "(none)")
+  ];
+  if (memory) {
+    lines.push("student already justified this site: " + memory.answer);
+    lines.push("that justification was for title: " + (memory.title || "(none)"));
+  }
+  return lines.join("\n");
+}
+
+function sameContent(activity, memory) {
+  if (!memory) {
+    return false;
+  }
+  if (activity.pageKey && memory.pageKey && activity.pageKey === memory.pageKey) {
+    return true;
+  }
+  const a = String(activity.title || "").trim().toLowerCase();
+  const b = String(memory.title || "").trim().toLowerCase();
+  return Boolean(a && b && a === b);
 }
 
 async function askJson(settings, system, user) {
@@ -104,8 +123,68 @@ async function askJson(settings, system, user) {
   return { ok: true, data, error: "" };
 }
 
-async function classifyActivity(settings, goal, activity) {
-  const asked = await askJson(settings, CLASSIFY_SYSTEM, windowContext(goal, activity));
+function isCompanionApp(appName, companions) {
+  const app = String(appName || "").trim().toLowerCase();
+  if (!app) {
+    return false;
+  }
+  const list = Array.isArray(companions) ? companions : [];
+  for (let i = 0; i < list.length; i += 1) {
+    const item = String(list[i] || "").trim().toLowerCase();
+    if (!item) {
+      continue;
+    }
+    if (app === item) {
+      return true;
+    }
+    if (item.length >= 4 && (app.indexOf(item) !== -1 || item.indexOf(app) !== -1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isAllowedSite(domain, sites) {
+  const host = String(domain || "").trim().toLowerCase().replace(/^www\./, "");
+  if (!host) {
+    return false;
+  }
+  const list = Array.isArray(sites) ? sites : [];
+  for (let i = 0; i < list.length; i += 1) {
+    const item = String(list[i] || "").trim().toLowerCase().replace(/^www\./, "");
+    if (!item) {
+      continue;
+    }
+    if (host === item || host.slice(-item.length - 1) === "." + item) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function classifyActivity(settings, goal, activity, memory) {
+  if (isCompanionApp(activity.app, settings && settings.companionApps)) {
+    return {
+      classification: "on-task",
+      reason: (activity.app || "This app") + " is on your work-apps list.",
+      status: 200
+    };
+  }
+  if (isAllowedSite(activity.domain, settings && settings.companionSites)) {
+    return {
+      classification: "on-task",
+      reason: (activity.domain || "This site") + " is on your allowed-sites list.",
+      status: 200
+    };
+  }
+  if (sameContent(activity, memory)) {
+    return {
+      classification: "on-task",
+      reason: "You already explained why this page belongs in this session.",
+      status: 200
+    };
+  }
+  const asked = await askJson(settings, CLASSIFY_SYSTEM, windowContext(goal, activity, memory));
   if (!asked.ok) {
     return { classification: "ambiguous", reason: asked.error, status: 0 };
   }
@@ -129,8 +208,8 @@ async function generateQuestion(settings, goal, activity, reason) {
   if (asked.ok && asked.data.question) {
     return asked.data.question;
   }
-  const where = activity.domain || activity.app || "this";
-  return `You are supposed to be working on ${goal || "your goal"}. How does “${activity.title || "this window"}” in ${where} connect to that?`;
+  const where = activity.title || activity.domain || activity.app || "this";
+  return `You are supposed to be working on ${goal || "your goal"}. How does “${where}” connect to that?`;
 }
 
 async function judgeAnswer(settings, goal, activity, answer) {
