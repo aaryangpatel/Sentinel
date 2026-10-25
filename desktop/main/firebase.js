@@ -123,7 +123,8 @@ function authError(err) {
     "auth/invalid-credential": "Wrong email or password.",
     "auth/wrong-password": "Wrong email or password.",
     "auth/user-not-found": "Wrong email or password.",
-    "auth/network-request-failed": "Network error reaching Firebase."
+    "auth/network-request-failed": "Network error reaching Firebase.",
+    "permission-denied": "Firestore blocked this write. Publish desktop/firestore.rules in Firebase Console → Firestore → Rules."
   };
   return messages[code] || (err && err.message) || "Firebase request failed.";
 }
@@ -330,6 +331,267 @@ function localDayKey(now) {
   return `${d.getFullYear()}-${month}-${day}`;
 }
 
+function weekKey(now) {
+  const d = new Date(now || Date.now());
+  const weekday = d.getDay();
+  const offset = weekday === 0 ? -6 : 1 - weekday;
+  d.setDate(d.getDate() + offset);
+  return localDayKey(d);
+}
+
+function intentScore(onMs, offMs, rescues) {
+  const share = onMs / Math.max(onMs + offMs, 1);
+  return Math.round((onMs / 60000) * share * 10 + (rescues || 0) * 8);
+}
+
+function displayName(email) {
+  return String(email || "friend").split("@")[0];
+}
+
+function randomCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i += 1) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return code;
+}
+
+function streakFromDays(daysWithFocus) {
+  const set = new Set(daysWithFocus);
+  let streak = 0;
+  const cursor = new Date();
+  for (let i = 0; i < 60; i += 1) {
+    const key = localDayKey(cursor);
+    if (!set.has(key)) {
+      break;
+    }
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function badgesFromRollup(rollup) {
+  const badges = [];
+  if (rollup.onMs >= 60000) {
+    badges.push("First session");
+  }
+  if (rollup.rescues >= 1) {
+    badges.push("Honest rescue");
+  }
+  if (rollup.rescues >= 3) {
+    badges.push("Comeback kid");
+  }
+  if (rollup.youtubeOn) {
+    badges.push("Lecture, not gameplay");
+  }
+  if (rollup.longestOnMs >= 25 * 60 * 1000) {
+    badges.push("Deep work");
+  }
+  if (rollup.streak >= 3) {
+    badges.push("3-day streak");
+  }
+  if (rollup.share >= 0.8 && rollup.onMs >= 20 * 60 * 1000) {
+    badges.push("Lock-in");
+  }
+  return badges;
+}
+
+async function rollupUser(userId) {
+  const snap = await getDocs(query(collection(firestore, "events"), where("userId", "==", userId)));
+  const week = weekKey();
+  const { from, to } = dayBounds(week);
+  const weekEnd = from + 7 * 24 * 60 * 60 * 1000;
+  let onMs = 0;
+  let offMs = 0;
+  let ambMs = 0;
+  let rescues = 0;
+  let youtubeOn = false;
+  let longestOnMs = 0;
+  const focusDays = [];
+  const byDay = {};
+  snap.forEach((row) => {
+    const event = row.data();
+    const day = localDayKey(event.ts);
+    if (!byDay[day]) {
+      byDay[day] = 0;
+    }
+    if (event.classification === "on-task") {
+      byDay[day] += event.durationMs || 0;
+    }
+    if (event.ts < from || event.ts >= weekEnd) {
+      return;
+    }
+    const ms = event.durationMs || 0;
+    if (event.classification === "on-task") {
+      onMs += ms || 2500;
+      longestOnMs = Math.max(longestOnMs, ms);
+      const hay = `${event.app || ""} ${event.domain || ""} ${event.title || ""}`.toLowerCase();
+      if (hay.indexOf("youtube") !== -1) {
+        youtubeOn = true;
+      }
+    } else if (event.classification === "off-task") {
+      offMs += ms || 2500;
+    } else if (event.classification === "ambiguous") {
+      ambMs += ms || 2500;
+    } else if (event.classification === "justified") {
+      rescues += 1;
+    }
+  });
+  Object.keys(byDay).forEach((day) => {
+    if (byDay[day] >= 60000) {
+      focusDays.push(day);
+    }
+  });
+  const streak = streakFromDays(focusDays);
+  const share = onMs / Math.max(onMs + offMs, 1);
+  return {
+    onMs,
+    offMs,
+    ambMs,
+    rescues,
+    youtubeOn,
+    longestOnMs,
+    streak,
+    share,
+    score: intentScore(onMs, offMs, rescues),
+    badges: badgesFromRollup({
+      onMs, rescues, youtubeOn, longestOnMs, streak, share
+    })
+  };
+}
+
+async function setPresence(userId, email, payload) {
+  init();
+  await setDoc(doc(firestore, "profiles", userId), Object.assign({
+    email,
+    updatedAt: Date.now()
+  }, payload));
+}
+
+async function publishWeekly(userId, email) {
+  init();
+  const week = weekKey();
+  const rollup = await rollupUser(userId);
+  const body = {
+    userId,
+    email,
+    name: displayName(email),
+    weekKey: week,
+    onMs: rollup.onMs,
+    offMs: rollup.offMs,
+    ambMs: rollup.ambMs,
+    rescues: rollup.rescues,
+    streak: rollup.streak,
+    score: rollup.score,
+    badges: rollup.badges,
+    updatedAt: Date.now()
+  };
+  await setDoc(doc(firestore, "weeklyStats", userId + "_" + week), body);
+  await setPresence(userId, email, {
+    streak: rollup.streak,
+    score: rollup.score,
+    badges: rollup.badges
+  });
+  return body;
+}
+
+async function createCircle(userId, email, name) {
+  init();
+  const label = String(name || "").trim() || "Study circle";
+  const ref = await addDoc(collection(firestore, "circles"), {
+    name: label,
+    code: randomCode(),
+    createdBy: userId,
+    createdAt: Date.now()
+  });
+  await setDoc(doc(firestore, "circleMembers", ref.id + "_" + userId), {
+    circleId: ref.id,
+    userId,
+    email,
+    name: displayName(email),
+    joinedAt: Date.now()
+  });
+  return getCircle(ref.id, userId);
+}
+
+async function joinCircle(userId, email, code) {
+  init();
+  const needle = String(code || "").trim().toUpperCase();
+  const snap = await getDocs(query(collection(firestore, "circles"), where("code", "==", needle)));
+  if (snap.empty) {
+    return { ok: false, error: "No circle uses that code." };
+  }
+  const circle = snap.docs[0];
+  await setDoc(doc(firestore, "circleMembers", circle.id + "_" + userId), {
+    circleId: circle.id,
+    userId,
+    email,
+    name: displayName(email),
+    joinedAt: Date.now()
+  });
+  return { ok: true, circle: await getCircle(circle.id, userId) };
+}
+
+async function getCircle(circleId, viewerId) {
+  const circleSnap = await getDoc(doc(firestore, "circles", circleId));
+  if (!circleSnap.exists()) {
+    return null;
+  }
+  const circle = Object.assign({ id: circleId }, circleSnap.data());
+  const membersSnap = await getDocs(query(collection(firestore, "circleMembers"), where("circleId", "==", circleId)));
+  const week = weekKey();
+  const members = [];
+  const huddle = [];
+  for (const row of membersSnap.docs) {
+    const member = row.data();
+    const statsSnap = await getDoc(doc(firestore, "weeklyStats", member.userId + "_" + week));
+    const stats = statsSnap.exists() ? statsSnap.data() : {
+      score: 0, onMs: 0, offMs: 0, streak: 0, rescues: 0, badges: []
+    };
+    const profileSnap = await getDoc(doc(firestore, "profiles", member.userId));
+    const profile = profileSnap.exists() ? profileSnap.data() : {};
+    members.push({
+      userId: member.userId,
+      name: member.name || displayName(member.email),
+      email: member.email,
+      score: stats.score || 0,
+      onMs: stats.onMs || 0,
+      offMs: stats.offMs || 0,
+      streak: stats.streak || 0,
+      rescues: stats.rescues || 0,
+      badges: stats.badges || [],
+      me: member.userId === viewerId
+    });
+    if (profile.focus && profile.goal) {
+      huddle.push({
+        name: member.name || displayName(member.email),
+        goal: profile.goal,
+        me: member.userId === viewerId
+      });
+    }
+  }
+  members.sort((a, b) => b.score - a.score);
+  const average = members.length
+    ? Math.round(members.reduce((sum, row) => sum + row.score, 0) / members.length)
+    : 0;
+  return Object.assign({ members, huddle, average, weekKey: week }, circle);
+}
+
+async function listCircles(userId) {
+  init();
+  const snap = await getDocs(query(collection(firestore, "circleMembers"), where("userId", "==", userId)));
+  const circles = [];
+  for (const row of snap.docs) {
+    const circle = await getCircle(row.data().circleId, userId);
+    if (circle) {
+      circles.push(circle);
+    }
+  }
+  return circles;
+}
+
 module.exports = {
   init,
   restoreUser,
@@ -342,5 +604,11 @@ module.exports = {
   appendEvent,
   analytics,
   localDayKey,
+  weekKey,
+  publishWeekly,
+  setPresence,
+  createCircle,
+  joinCircle,
+  listCircles,
   DEFAULT_SETTINGS
 };

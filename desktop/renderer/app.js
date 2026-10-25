@@ -192,8 +192,8 @@ function paintStatus(status) {
   const activity = status.activity;
   if (activity) {
     $("now-app").textContent = activity.app || "Unknown app";
-    const bits = [activity.domain, activity.title].filter(Boolean);
-    $("now-meta").textContent = bits.join(" · ") || "No window title yet.";
+    const bits = [activity.domain, activity.title || activity.path].filter(Boolean);
+    $("now-meta").textContent = bits.join(" · ") || "Waiting for the tab title… allow Automation for Chrome."
   }
   $("now-class").textContent = status.lastClass || "—";
   $("now-reason").textContent = status.lastReason || "";
