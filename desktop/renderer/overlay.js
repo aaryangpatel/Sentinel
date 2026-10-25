@@ -19,7 +19,7 @@ function clearBreak() {
   }
 }
 
-window.sentinel.onToast((payload) => {
+window.sentinel.onToast((payloa) => {
   clearBreak();
   show("toast");
   const where = payload.domain || payload.app;
