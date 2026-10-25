@@ -157,6 +157,7 @@ function enter(user) {
     $("grace-val").textContent = (user.settings.graceSeconds || 45) + "s";
     applyCompanionSettings(user.settings);
   }
+  paintKeyBanner();
   const today = new Date();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
@@ -232,6 +233,40 @@ $("grace").oninput = () => {
   $("grace-val").textContent = $("grace").value + "s";
 };
 
+function classifierReady() {
+  const provider = $("provider").value;
+  if (provider === "ollama") {
+    return true;
+  }
+  return Boolean($("api-key").value.trim());
+}
+
+function paintKeyBanner() {
+  const needsKey = $("provider").value !== "ollama" && !classifierReady();
+  show("key-banner", needsKey);
+  show("groq-help", $("provider").value === "groq");
+}
+
+function goToSettings() {
+  document.querySelectorAll(".nav").forEach((item) => {
+    item.classList.toggle("on", item.dataset.view === "settings");
+  });
+  ["focus", "analytics", "circles", "settings"].forEach((name) => {
+    show("view-" + name, name === "settings");
+  });
+}
+
+async function openGroqGuide() {
+  const url = await window.sentinel.guideUrl();
+  await window.sentinel.openUrl(url);
+}
+
+$("goto-settings").onclick = goToSettings;
+$("open-groq-guide").onclick = openGroqGuide;
+$("settings-groq-guide").onclick = openGroqGuide;
+$("provider").onchange = paintKeyBanner;
+$("api-key").oninput = paintKeyBanner;
+
 $("save-settings").onclick = async () => {
   await window.sentinel.saveSettings({
     provider: $("provider").value,
@@ -243,6 +278,7 @@ $("save-settings").onclick = async () => {
     companionSites: companionSites.slice()
   });
   $("settings-saved").textContent = "Saved on this account.";
+  paintKeyBanner();
 };
 
 $("companion-add-btn").onclick = async () => {

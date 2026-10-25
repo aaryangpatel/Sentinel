@@ -107,7 +107,7 @@ function sameContent(activity, memory) {
 
 async function askJson(settings, system, user) {
   if (!hasModel(settings)) {
-    return { ok: false, data: null, error: "Add a Groq API key in Settings (console.groq.com)." };
+    return { ok: false, data: null, error: "Add a Groq API key in Settings. The website page /groq shows the exact steps." };
   }
   const result = await chatCompletions(settings, [
     { role: "system", content: system },

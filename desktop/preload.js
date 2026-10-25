@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("sentinel", {
   createCircle: (name) => ipcRenderer.invoke("circles:create", name),
   joinCircle: (code) => ipcRenderer.invoke("circles:join", code),
   circles: () => ipcRenderer.invoke("circles:list"),
+  guideUrl: () => ipcRenderer.invoke("site:guide"),
+  openUrl: (url) => ipcRenderer.invoke("open:url", url),
   onStatus: (fn) => {
     ipcRenderer.on("status", (_event, payload) => fn(payload));
   },

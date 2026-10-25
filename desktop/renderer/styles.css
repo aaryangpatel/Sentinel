@@ -85,6 +85,16 @@ button {
   border: 1px solid var(--line);
   padding: 8px 12px;
 }
+button.link {
+  display: inline;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--gold);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
 .tabs { display: flex; gap: 8px; margin-bottom: 8px; }
 .tab {
   background: transparent;

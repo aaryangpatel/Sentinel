@@ -1,7 +1,8 @@
 "use strict";
 
+const fs = require("fs");
 const path = require("path");
-const { app, BrowserWindow, ipcMain, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
 const firebase = require("./firebase");
 const { Engine } = require("./engine");
 
@@ -27,6 +28,12 @@ function createMainWindow() {
     }
   });
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    if (isHttpUrl(details.url)) {
+      shell.openExternal(details.url);
+    }
+    return { action: "deny" };
+  });
   mainWindow.on("closed", () => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.close();
@@ -260,4 +267,35 @@ ipcMain.handle("circles:list", async () => {
   }
   await firebase.publishWeekly(currentUser.id, currentUser.email);
   return firebase.listCircles(currentUser.id);
+});
+
+/**
+ * Public site origin for in-app “how to get a Groq key” links.
+ * Edit desktop/web-origin.json after you know the Vercel URL.
+ */
+function webOrigin() {
+  const file = path.join(__dirname, "..", "web-origin.json");
+  if (!fs.existsSync(file)) {
+    return "https://procrastination.vercel.app";
+  }
+  const data = JSON.parse(fs.readFileSync(file, "utf8"));
+  const origin = data && data.origin ? String(data.origin).replace(/\/$/, "") : "";
+  return origin || "https://procrastination.vercel.app";
+}
+
+function groqGuideUrl() {
+  return webOrigin() + "/groq";
+}
+
+function isHttpUrl(url) {
+  return String(url || "").indexOf("https://") === 0 || String(url || "").indexOf("http://") === 0;
+}
+
+ipcMain.handle("site:guide", () => groqGuideUrl());
+ipcMain.handle("open:url", (_event, url) => {
+  if (!isHttpUrl(url)) {
+    return { ok: false };
+  }
+  shell.openExternal(url);
+  return { ok: true };
 });

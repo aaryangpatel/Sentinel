@@ -54,6 +54,15 @@
           <span id="focus-pill" class="pill">Idle</span>
         </header>
 
+        <div id="key-banner" class="card hidden" style="margin-bottom:16px">
+          <p class="eyebrow">Groq API key</p>
+          <p class="copy">Add a free Groq key in Settings. Without it, Sentinel cannot classify windows.</p>
+          <div class="row">
+            <button type="button" id="goto-settings" class="primary" style="margin-top:0">Open Settings</button>
+            <button type="button" id="open-groq-guide" class="ghost">How to get a key</button>
+          </div>
+        </div>
+
         <div class="now">
           <div class="now-kicker">Frontmost</div>
           <div id="now-app" class="now-app">Waiting for an app…</div>
@@ -172,6 +181,7 @@
               <option value="ollama">Ollama (local)</option>
             </select>
           </label>
+          <p id="groq-help" class="copy">Sentinel needs a free Groq API key to classify the frontmost app. <button type="button" id="settings-groq-guide" class="link">Open the step-by-step guide on the website</button>.</p>
           <label>API key <input id="api-key" type="password" placeholder="gsk_..."></label>
           <label>Model <input id="model" type="text" placeholder="openai/gpt-oss-20b"></label>
           <label>Ollama URL <input id="ollama-url" type="text"></label>
