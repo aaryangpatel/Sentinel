@@ -36,6 +36,7 @@
       <nav>
         <button type="button" data-view="focus" class="nav on">Focus</button>
         <button type="button" data-view="analytics" class="nav">Analytics</button>
+        <button type="button" data-view="circles" class="nav">Circles</button>
         <button type="button" data-view="settings" class="nav">Settings</button>
       </nav>
       <button type="button" id="logout" class="ghost">Sign out</button>
@@ -71,9 +72,23 @@
             </div>
           </div>
           <div class="card">
-            <p class="eyebrow">Why this exists</p>
-            <p class="copy">A hard-coded list of apps and websites to block is not useful. Sentinel reads the app, the site, and the window against <em>this</em> task, then tells you immediately when you drift.</p>
+            <p class="eyebrow">Always allowed</p>
+            <p class="copy">Apps or sites that should never be marked off-task. Add Spotify, Notion, or khanacademy.org.</p>
+            <div id="focus-chips" class="chips"></div>
+            <div id="focus-site-chips" class="chips"></div>
+            <div class="row">
+              <input id="companion-add" placeholder="Add an app or site">
+              <button type="button" id="companion-add-btn" class="ghost">Add</button>
+            </div>
+            <div class="row">
+              <button type="button" id="companion-now" class="ghost">Allow this app</button>
+              <button type="button" id="companion-site" class="ghost">Allow this site</button>
+            </div>
           </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <p class="eyebrow">Huddle</p>
+          <p class="copy" id="huddle">Friends in a live session will show up here.</p>
         </div>
       </section>
 
@@ -118,6 +133,30 @@
         </div>
       </section>
 
+      <section id="view-circles" class="view hidden">
+        <header class="page-head">
+          <div>
+            <p class="eyebrow">Friends</p>
+            <h2>Circles</h2>
+          </div>
+        </header>
+        <p class="copy">Compete on Intent Score this week: on-task minutes × focus share, plus points for honest rescues. Time wasted does not win.</p>
+        <div class="grid-2">
+          <div class="card">
+            <label>New circle name</label>
+            <input id="circle-name" placeholder="Calc study group">
+            <button type="button" id="circle-create" class="primary">Create circle</button>
+          </div>
+          <div class="card">
+            <label>Join with a code</label>
+            <input id="circle-code" placeholder="7K3M2P" style="text-transform:uppercase">
+            <button type="button" id="circle-join" class="primary">Join</button>
+          </div>
+        </div>
+        <p id="circle-error" class="error"></p>
+        <div id="circle-list"></div>
+      </section>
+
       <section id="view-settings" class="view hidden">
         <header class="page-head">
           <div>
@@ -140,7 +179,7 @@
             <input id="grace" type="range" min="15" max="120" step="5">
             <span id="grace-val">45s</span>
           </label>
-          <p class="quiet">The model sees your goal, app, site, and the real tab or video title. Allow Accessibility, Screen Recording, and Automation (Chrome/Safari) when macOS asks.</p>
+          <p class="quiet">The model sees your goal, app, site, and the real tab or video title. Allow Accessibility, Screen Recording, and Automation (Chrome/Safari) when macOS asks. Edit always-allowed apps and sites on the Focus dashboard.</p>
           <button type="button" id="save-settings" class="primary">Save settings</button>
           <p id="settings-saved" class="quiet"></p>
         </div>

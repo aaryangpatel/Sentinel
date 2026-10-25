@@ -29,7 +29,7 @@ html, body {
   padding: 48px 20px;
 }
 .auth-card {
-  width: min(440px, 100%);
+  width: min(480px, 100%);
   background: var(--panel);
   border: 1px solid var(--line);
   padding: 36px 32px 32px;
@@ -178,6 +178,19 @@ main { overflow: auto; }
   padding: 18px;
 }
 .row { display: flex; align-items: center; gap: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.chip {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+}
+.chip.on {
+  color: #16140f;
+  background: var(--gold);
+  border-color: var(--gold);
+}
+#companion-now, #companion-site { margin-top: 4px; }
 .copy { margin: 8px 0 0; }
 .stack label { margin-top: 0; }
 
@@ -198,6 +211,23 @@ main { overflow: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
 th { color: var(--muted); font-weight: 600; }
+
+.badge {
+  display: inline-block;
+  margin: 0 6px 6px 0;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 3px 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.code {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+}
+.board td.me { color: var(--gold); }
 
 .toast {
   position: fixed;
