@@ -15,7 +15,10 @@ export default function Download() {
           <a className="btn lg" href={dmgUrl}>Download Sentinel for Mac</a>
           <a className="btn ghost lg" href={releasesUrl} target="_blank" rel="noreferrer">GitHub Releases</a>
         </div>
-        <p className="quiet">macOS 12 or later. First launch: right-click the app, then choose Open.</p>
+        <p className="quiet">
+          macOS 12 or later. The app is not Apple-notarized yet, so macOS may
+          say it is “damaged” — that is a Gatekeeper block, not a broken file.
+        </p>
         <ol className="steps">
           <li>
             <strong>Download the installer</strong>
@@ -26,9 +29,11 @@ export default function Download() {
             Open the disk image and drag Sentinel into Applications.
           </li>
           <li>
-            <strong>Open it once from the Finder</strong>
-            Right-click → Open. Allow Accessibility, Screen Recording, and
-            Automation when asked.
+            <strong>Clear the quarantine flag</strong>
+            Open Terminal and run{" "}
+            <span className="code">xattr -cr /Applications/Sentinel.app</span>,
+            then open Sentinel from Applications. Allow Accessibility, Screen
+            Recording, and Automation when asked.
           </li>
           <li>
             <strong>Add a Groq key</strong>
