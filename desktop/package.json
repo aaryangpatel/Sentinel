@@ -1,6 +1,6 @@
 {
   "name": "sentinel",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "author": "Aaryan Patel",
   "description": "Desktop focus assistant that classifies any frontmost app and website against your goal.",
