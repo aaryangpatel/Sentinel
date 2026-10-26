@@ -6,57 +6,41 @@ export default function Download() {
   return (
     <Layout>
       <section className="prose">
-        <p className="eyebrow">macOS</p>
-        <h1>Download Sentinel</h1>
+        <h1>Download</h1>
         <p className="lede">
-          The installer is a disk image hosted on GitHub Releases. Vercel cannot
-          serve a file that large, so this button downloads the <span className="code">.dmg</span> from
-          the latest release.
+          Get the Mac installer from GitHub Releases
+          (<span className="code">Sentinel-2.0.0.dmg</span>). The site links
+          there because the disk image is too large to host on Vercel.
         </p>
-
         <div className="cta">
           <a className="btn lg" href={dmgUrl}>Download Sentinel for Mac</a>
-          <a className="btn ghost lg" href={releasesUrl} target="_blank" rel="noreferrer">Open GitHub Releases</a>
+          <a className="btn ghost lg" href={releasesUrl} target="_blank" rel="noreferrer">GitHub Releases</a>
         </div>
-        <p className="quiet">macOS 12 or later · Apple silicon and Intel · First launch: right-click the app, then Open.</p>
-
+        <p className="quiet">macOS 12 or later. First launch: right-click the app, then choose Open.</p>
         <ol className="steps">
           <li>
-            <strong>Download the disk image</strong>
-            Use the gold button above. The file is named Sentinel-2.0.0.dmg and comes from
-            the GitHub Release, not from this website’s server.
+            <strong>Save the disk image</strong>
+            The file is Sentinel-2.0.0.dmg.
           </li>
           <li>
-            <strong>Open the disk image</strong>
-            Double-click the downloaded file in Finder.
+            <strong>Open it and drag Sentinel into Applications</strong>
           </li>
           <li>
-            <strong>Install</strong>
-            Drag Sentinel into the Applications folder.
+            <strong>Right-click → Open</strong>
+            Allow Accessibility, Screen Recording, and Automation when asked.
           </li>
           <li>
-            <strong>First launch</strong>
-            Right-click Sentinel → Open. Allow Accessibility, Screen Recording, and
-            Automation when macOS asks.
-          </li>
-          <li>
-            <strong>Add a Groq key</strong>
-            Open Settings in the app, then follow the{" "}
-            <Link to="/groq">API key guide</Link>. Without a key, windows stay unclassified.
+            <strong>Add a Groq key in Settings</strong>
+            Follow the <Link to="/groq">API key steps</Link>. Without a key the
+            app will not classify windows.
           </li>
         </ol>
-
-        <div className="card" style={{ marginTop: 32 }}>
-          <p className="eyebrow">If the download button fails</p>
-          <p className="copy">
-            The file is missing until a GitHub Release named v2.0.0 includes
-            Sentinel-2.0.0.dmg. Open{" "}
-            <a href={releasesUrl} target="_blank" rel="noreferrer">GitHub Releases</a>
-            {" "}and download the asset there, or run from source:
-          </p>
-          <p className="copy"><span className="code">git clone https://github.com/aaryangpatel/Sentinel.git</span></p>
-          <p className="copy"><span className="code">cd Sentinel/desktop && npm install && npm start</span></p>
-        </div>
+        <p className="copy">
+          If the download link 404s, the release asset is not up yet. Use{" "}
+          <a href={releasesUrl} target="_blank" rel="noreferrer">GitHub Releases</a>
+          {" "}or run from source:
+        </p>
+        <p className="copy"><span className="code">cd desktop && npm install && npm start</span></p>
       </section>
     </Layout>
   );

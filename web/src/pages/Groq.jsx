@@ -5,64 +5,53 @@ export default function Groq() {
   return (
     <Layout>
       <section className="prose">
-        <p className="eyebrow">Settings</p>
-        <h1>Get a free Groq API key</h1>
+        <h1>Groq API key</h1>
         <p className="lede">
-          Sentinel uses Groq to classify the window in front of you. The key is free,
-          does not require a credit card, and is pasted only into the Mac app Settings.
-          Do not commit it to a repository or send it in a message.
+          The classifier needs a free Groq key. No credit card. Paste it only in
+          the Mac app under Settings. Do not put it in git or a chat.
         </p>
-
         <ol className="steps">
           <li>
-            <strong>1. Open the Groq console</strong>
-            Go to <a href="https://console.groq.com" target="_blank" rel="noreferrer">console.groq.com</a>.
-            Sign up with email or Google. Confirm the verification email before you continue.
+            <strong>Create an account</strong>
+            Open <a href="https://console.groq.com" target="_blank" rel="noreferrer">console.groq.com</a>.
+            Sign up with email or Google and confirm the email they send.
           </li>
           <li>
-            <strong>2. Select a project</strong>
-            The top-left of the console shows Organization / Project. A default project is
-            created for you. If the dropdown is empty, open it, choose Create Project, and
-            name it Sentinel. Keys belong to the selected project.
+            <strong>Select a project</strong>
+            Top-left of the console: Organization / Project. If nothing is there,
+            create a project named Sentinel. New keys attach to whatever project
+            is selected.
           </li>
           <li>
-            <strong>3. Open API Keys</strong>
-            In the left sidebar click API Keys, or open{" "}
+            <strong>Open API Keys</strong>
+            Sidebar → API Keys, or{" "}
             <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">console.groq.com/keys</a>.
-            Only an owner or developer on that project can create a key.
           </li>
           <li>
-            <strong>4. Create the key</strong>
-            Click Create API Key. Name it Sentinel. Submit.
+            <strong>Create API Key</strong>
+            Name it Sentinel and submit.
           </li>
           <li>
-            <strong>5. Copy it immediately</strong>
-            Groq shows the secret once. It starts with <span className="code">gsk_</span>.
-            Copy it now. If you close the dialog without copying, delete that key and create another.
+            <strong>Copy the secret once</strong>
+            It starts with <span className="code">gsk_</span>. If you close the
+            dialog without copying, delete the key and make another.
           </li>
           <li>
-            <strong>6. Paste it in Sentinel</strong>
-            Open the Mac app → Settings. Set Classifier to Groq. Paste the key.
-            Leave Model as <span className="code">openai/gpt-oss-20b</span> unless you chose another
-            Groq chat model. Click Save settings.
+            <strong>Paste it in the Mac app</strong>
+            Settings → Classifier: Groq → API key. Leave the model as{" "}
+            <span className="code">openai/gpt-oss-20b</span> unless you picked
+            another Groq chat model. Save.
           </li>
           <li>
-            <strong>7. Confirm it works</strong>
-            Open Focus, start a session with a real goal, and switch to Chrome.
-            The Frontmost card should show on-task or off-task, not a missing-key warning.
+            <strong>Start a focus session</strong>
+            Switch to Chrome. The Frontmost line should say on-task or off-task,
+            not that a key is missing.
           </li>
         </ol>
-
-        <div className="card" style={{ marginTop: 28 }}>
-          <p className="eyebrow">If something fails</p>
-          <p className="copy">401 or “key invalid”: a space was copied, or the key was revoked. Create a new one.</p>
-          <p className="copy">Windows stay ambiguous: the key is missing or Groq is unavailable. Sentinel will not interrupt until the model answers.</p>
-          <p className="copy">“Unauthorized domain” is a Firebase sign-in issue, not Groq. This key is only for classification.</p>
-        </div>
-
+        <p className="copy">401 means the key was copied with a space or revoked. Ambiguous windows mean the model did not answer. “Unauthorized domain” is Firebase sign-in, not Groq.</p>
         <div className="cta">
           <a className="btn lg" href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Open Groq API Keys</a>
-          <Link className="btn ghost lg" to="/download">Download the app</Link>
+          <Link className="btn ghost lg" to="/download">Download</Link>
         </div>
       </section>
     </Layout>
