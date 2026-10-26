@@ -18,7 +18,7 @@ export default function Home() {
             target="_blank"
             rel="noreferrer"
           >
-            Source
+            Source Code
           </a>
         </div>
         <p className="quiet hero-note">macOS 12 or later · Apple silicon and Intel</p>
