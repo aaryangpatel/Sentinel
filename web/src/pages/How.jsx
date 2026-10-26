@@ -30,7 +30,7 @@ export default function How() {
           </li>
           <li>
             <strong>You can allow tools you actually work with</strong>
-            In the Mac app, type apps or sites such as Spotify or khanacademy.org.
+            In the Mac app, type apps or sites such as Spotify.
             Those stay on-task.
           </li>
           <li>

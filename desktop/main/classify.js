@@ -35,17 +35,13 @@ function parseJsonObject(text) {
 }
 
 function hasModel(settings) {
-  if (!settings) {
-    return false;
-  }
-  if (settings.provider === "ollama") {
-    return true;
-  }
-  return Boolean(settings.apiKey);
+  return Boolean(settings && settings.apiKey);
 }
 
 async function chatCompletions(settings, messages) {
-  const provider = !settings.provider || settings.provider === "stub" ? "groq" : settings.provider;
+  const provider = !settings.provider || settings.provider === "stub" || settings.provider === "ollama"
+    ? "groq"
+    : settings.provider;
   const model = settings.model || "openai/gpt-oss-20b";
   let url = "https://api.groq.com/openai/v1/chat/completions";
   const headers = { "Content-Type": "application/json" };
@@ -57,8 +53,6 @@ async function chatCompletions(settings, messages) {
     url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     headers.Authorization = "Bearer " + settings.apiKey;
     body.response_format = { type: "json_object" };
-  } else if (provider === "ollama") {
-    url = settings.ollamaUrl || "http://localhost:11434/v1/chat/completions";
   } else {
     return { ok: false, status: 0, text: "" };
   }
@@ -114,7 +108,7 @@ async function askJson(settings, system, user) {
     { role: "user", content: user }
   ]);
   if (!result.ok) {
-    return { ok: false, data: null, error: "The model did not respond. Check the key, model name, or Ollama." };
+    return { ok: false, data: null, error: "The model did not respond. Check the API key and model name." };
   }
   const data = parseJsonObject(assistantContent(result.text));
   if (!data) {

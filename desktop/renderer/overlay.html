@@ -8,55 +8,105 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     html, body {
-      margin: 0; width: 100%; height: 100%; background: transparent;
-      font: 14px/1.45 "IBM Plex Sans", "Segoe UI", sans-serif; color: #1b1914;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      font: 13px/1.4 "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: #1b1914;
+      overflow: hidden;
     }
-    .card {
+    .panel {
       margin: 8px;
-      background: #fffcf6;
-      border: 1px solid #9b3d32;
-      border-radius: 8px;
-      padding: 14px 16px;
-      box-shadow: 0 8px 24px rgba(27, 25, 20, 0.1);
+      background: #f7f4ee;
+      border: 1px solid #ddd6c8;
+      padding: 14px 16px 12px;
+      box-sizing: border-box;
+      box-shadow: 0 12px 32px rgba(27, 25, 20, 0.12);
     }
-    .kicker { font-size: 12px; font-weight: 500; color: #9b3d32; margin: 0 0 6px; }
-    h1 { font: 600 18px/1.25 inherit; margin: 0 0 6px; letter-spacing: -0.02em; }
-    p { margin: 0 0 8px; color: #5a554c; }
-    textarea {
-      width: 100%; box-sizing: border-box; min-height: 70px;
-      background: #fff; color: #1b1914; border: 1px solid #d4cdb8;
-      border-radius: 5px; padding: 8px; font: inherit;
+    .panel.toast { border-left: 3px solid #9b3d32; }
+    .kicker {
+      margin: 0 0 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #6a655c;
     }
+    .toast .kicker { color: #9b3d32; }
+    h1 {
+      margin: 0 0 6px;
+      font: 600 15px/1.3 inherit;
+      letter-spacing: -0.02em;
+    }
+    p { margin: 0 0 6px; color: #6a655c; }
+    p:last-child { margin-bottom: 0; }
+    .question {
+      margin: 0 0 8px;
+      color: #1b1914;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .reason {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: #6a655c;
+    }
+    .reason:empty { display: none; }
+    input[type="text"] {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      color: #1b1914;
+      border: 0;
+      border-bottom: 1px solid #ddd6c8;
+      padding: 8px 0;
+      font: inherit;
+    }
+    input[type="text"]:focus { outline: none; border-bottom-color: #1b1914; }
     button {
-      margin-top: 8px; background: #1b1914; color: #f6f1e6; border: 0;
-      border-radius: 5px; padding: 10px 16px; font-weight: 600; cursor: pointer;
+      margin-top: 12px;
+      background: #1b1914;
+      color: #f6f1e6;
+      border: 0;
+      padding: 9px 14px;
+      font: 600 12px/1 inherit;
+      cursor: pointer;
     }
-    .hidden { display: none; }
-    #gate-error { color: #9b3d32; }
+    .hidden { display: none !important; }
+    #gate-error { color: #9b3d32; min-height: 1.2em; margin-top: 8px; }
+    #gate-error:empty { display: none; }
+
     .reset {
-      margin: 8px;
-      min-height: calc(100vh - 16px);
-      background: #fffcf6;
-      border: 1px solid #d4cdb8;
-      border-radius: 8px;
-      padding: 28px 24px 24px;
+      margin: 10px;
+      height: calc(100% - 20px);
+      background: #f7f4ee;
+      border: 1px solid #ddd6c8;
+      padding: 28px 24px;
       text-align: center;
       box-sizing: border-box;
-      box-shadow: 0 8px 24px rgba(27, 25, 20, 0.08);
+      box-shadow: 0 12px 32px rgba(27, 25, 20, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     .reset .kicker { color: #7d6230; }
-    .reset h1 { font-size: 24px; }
+    .reset h1 { font-size: 22px; margin-bottom: 6px; }
+    .reset #brk-goal { margin-bottom: 8px; max-width: 28em; }
     .orb {
-      width: 88px;
-      height: 88px;
-      margin: 18px auto;
+      width: 96px;
+      height: 96px;
+      margin: 16px auto;
       border: 3px solid #7d6230;
       border-radius: 99px;
       transform: scale(0.72);
       animation: breathe 8s ease-in-out infinite;
+      flex-shrink: 0;
     }
-    .phase { color: #7d6230; font-weight: 600; font-size: 12px; }
-    .count { font-size: 22px; color: #7d6230; font-weight: 600; }
+    .phase { color: #7d6230; font-weight: 600; font-size: 13px; margin: 0 0 4px; }
+    .count { font-size: 24px; color: #7d6230; font-weight: 600; margin: 0 0 8px; }
+    .hint { margin: 0; font-size: 13px; color: #6a655c; }
     @keyframes breathe {
       0%, 100% { transform: scale(0.72); }
       50% { transform: scale(1.08); }
@@ -64,28 +114,27 @@
   </style>
 </head>
 <body>
-  <div id="toast" class="card">
+  <div id="toast" class="panel toast">
     <p class="kicker">Off track</p>
     <h1 id="toast-title">This is not your task</h1>
     <p id="toast-reason"></p>
   </div>
-  <div id="gate" class="card hidden">
-    <p class="kicker">Reflection</p>
-    <h1>Does this still match?</h1>
-    <p id="gate-reason"></p>
-    <p id="gate-q"></p>
-    <textarea id="answer" placeholder="One honest sentence."></textarea>
-    <p id="gate-error" class="hidden"></p>
+  <div id="gate" class="panel hidden">
+    <p class="kicker">Check-in</p>
+    <p id="gate-q" class="question"></p>
+    <p id="gate-reason" class="reason"></p>
+    <input id="answer" type="text" placeholder="Yes / no, or one honest sentence." autocomplete="off" spellcheck="false">
+    <p id="gate-error"></p>
     <button type="button" id="submit">Submit</button>
   </div>
   <div id="brk" class="reset hidden">
-    <p class="kicker">Reset</p>
+    <p class="kicker">Take a breath</p>
     <h1>Come back to the work</h1>
     <p id="brk-goal"></p>
     <div class="orb" aria-hidden="true"></div>
     <p class="phase" id="phase">Inhale</p>
     <p class="count" id="count">0:18</p>
-    <p>Inhale for 4. Exhale for 4.</p>
+    <p class="hint">Inhale for 4. Exhale for 4.</p>
   </div>
   <script src="overlay.js"></script>
 </body>

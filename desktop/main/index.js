@@ -70,14 +70,30 @@ function sendOverlay(channel, payload) {
   }
 }
 
-function showOverlay(height) {
+function showToastOverlay(height) {
   if (!overlayWindow || overlayWindow.isDestroyed()) {
     return;
   }
   const display = screen.getPrimaryDisplay().workArea;
+  const width = 420;
   overlayWindow.setAlwaysOnTop(true, "floating");
-  overlayWindow.setSize(420, height);
-  overlayWindow.setPosition(display.x + display.width - 440, display.y + 16);
+  overlayWindow.setSize(width, height);
+  overlayWindow.setPosition(display.x + display.width - width - 20, display.y + 16);
+  overlayWindow.showInactive();
+}
+
+function showGateOverlay(height) {
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    return;
+  }
+  const display = screen.getPrimaryDisplay().workArea;
+  const width = 440;
+  overlayWindow.setAlwaysOnTop(true, "floating");
+  overlayWindow.setSize(width, height);
+  overlayWindow.setPosition(
+    display.x + Math.round((display.width - width) / 2),
+    display.y + Math.round((display.height - height) / 3)
+  );
   overlayWindow.showInactive();
 }
 
@@ -86,9 +102,9 @@ function showReset() {
     return;
   }
   const display = screen.getPrimaryDisplay().workArea;
-  const width = 420;
-  const height = 420;
-  overlayWindow.setAlwaysOnTop(true, "floating");
+  const width = 380;
+  const height = 400;
+  overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setSize(width, height);
   overlayWindow.setPosition(
     display.x + Math.round((display.width - width) / 2),
@@ -117,20 +133,23 @@ app.whenReady().then(async () => {
       }
     },
     onToast: (payload) => {
+      if (engine && engine.breakActive) {
+        return;
+      }
       sendOverlay("toast", payload);
-      showOverlay(96);
+      showToastOverlay(120);
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("toast", payload);
       }
       setTimeout(() => {
-        if (engine && !engine.gateOpen) {
+        if (engine && !engine.gateOpen && !engine.breakActive) {
           hideOverlay();
         }
       }, 6500);
     },
     onGate: (payload) => {
       sendOverlay("gate", payload);
-      showOverlay(340);
+      showGateOverlay(300);
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("gate", payload);
       }
@@ -140,6 +159,9 @@ app.whenReady().then(async () => {
       showReset();
     },
     onHide: () => {
+      if (engine && engine.breakActive) {
+        return;
+      }
       hideOverlay();
       sendOverlay("hide-gate");
       if (mainWindow && !mainWindow.isDestroyed()) {

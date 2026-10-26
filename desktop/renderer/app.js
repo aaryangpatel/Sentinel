@@ -153,12 +153,11 @@ function enter(user) {
   $("who").textContent = displayName;
   $("focus-greeting").textContent = displayName ? `Hi, ${displayName}` : "Live session";
   if (user.settings) {
-    $("provider").value = !user.settings.provider || user.settings.provider === "stub"
+    $("provider").value = !user.settings.provider || user.settings.provider === "stub" || user.settings.provider === "ollama"
       ? "groq"
       : user.settings.provider;
     $("api-key").value = user.settings.apiKey || "";
     $("model").value = user.settings.model || "openai/gpt-oss-20b";
-    $("ollama-url").value = user.settings.ollamaUrl || "http://localhost:11434/v1/chat/completions";
     $("grace").value = String(user.settings.graceSeconds || 45);
     $("grace-val").textContent = (user.settings.graceSeconds || 45) + "s";
     applyCompanionSettings(user.settings);
@@ -240,16 +239,11 @@ $("grace").oninput = () => {
 };
 
 function classifierReady() {
-  const provider = $("provider").value;
-  if (provider === "ollama") {
-    return true;
-  }
   return Boolean($("api-key").value.trim());
 }
 
 function paintKeyBanner() {
-  const needsKey = $("provider").value !== "ollama" && !classifierReady();
-  show("key-banner", needsKey);
+  show("key-banner", !classifierReady());
   show("groq-help", $("provider").value === "groq");
 }
 
@@ -278,7 +272,6 @@ $("save-settings").onclick = async () => {
     provider: $("provider").value,
     apiKey: $("api-key").value.trim(),
     model: $("model").value.trim(),
-    ollamaUrl: $("ollama-url").value.trim(),
     graceSeconds: Number($("grace").value),
     companionApps: companionApps.slice(),
     companionSites: companionSites.slice()
@@ -343,10 +336,8 @@ function paintCircles(circles) {
       const share = member.onMs + member.offMs
         ? Math.round((member.onMs / (member.onMs + member.offMs)) * 100) + "%"
         : "—";
-      return `<tr class="${member.me ? "me" : ""}"><td>${index + 1}</td><td>${escapeHtml(member.name)}${member.me ? " (you)" : ""}</td><td>${member.score}</td><td>${fmtMin(member.onMs)}</td><td>${share}</td><td>${member.streak}d</td><td>${member.rescues}</td></tr>`;
+      return `<tr class="${member.me ? "me" : ""}"><td>${index + 1}</td><td>${escapeHtml(member.name)}${member.me ? " (you)" : ""}</td><td>${member.score}</td><td>${fmtMin(member.onMs)}</td><td>${share}</td><td>${member.streak}d</td></tr>`;
     }).join("");
-    const mine = (circle.members || []).find((member) => member.me);
-    const badges = ((mine && mine.badges) || []).map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`).join("") || "<span class=\"quiet\">Win badges by rescuing a session or staying on a real lecture.</span>";
     const deleteBtn = circle.isOwner
       ? `<button type="button" class="ghost circle-delete" data-id="${escapeHtml(circle.id)}">Delete circle</button>`
       : "";
@@ -355,13 +346,11 @@ function paintCircles(circles) {
         <p class="eyebrow" style="margin:0">${escapeHtml(circle.name)}</p>
         ${deleteBtn}
       </div>
-      <p>Invite code <span class="code">${escapeHtml(circle.code)}</span> · Beat this week’s circle average of <b>${circle.average}</b></p>
+      <p>Invite code <span class="code">${escapeHtml(circle.code)}</span></p>
       <table class="board">
-        <thead><tr><th>#</th><th>Friend</th><th>Intent</th><th>On</th><th>Share</th><th>Streak</th><th>Rescues</th></tr></thead>
+        <thead><tr><th>#</th><th>Friend</th><th>Intent</th><th>On</th><th>Share</th><th>Streak</th></tr></thead>
         <tbody>${rows}</tbody>
-      </table>
-      <p class="eyebrow" style="margin-top:16px">Your badges</p>
-      <div>${badges}</div>`;
+      </table>`;
     root.appendChild(card);
   });
   root.querySelectorAll(".circle-delete").forEach((button) => {

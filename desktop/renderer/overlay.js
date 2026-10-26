@@ -35,11 +35,11 @@ window.sentinel.onToast((payload) => {
 window.sentinel.onGate((payload) => {
   clearBreak();
   show("gate");
-  document.getElementById("gate-reason").textContent = payload.reason || "";
   document.getElementById("gate-q").textContent = payload.question || "";
+  document.getElementById("gate-reason").textContent = payload.reason || "";
   document.getElementById("gate-error").textContent = "";
-  document.getElementById("gate-error").classList.add("hidden");
   document.getElementById("answer").value = "";
+  document.getElementById("answer").focus();
 });
 
 window.sentinel.onBreak((payload) => {
@@ -77,16 +77,23 @@ window.sentinel.onHideGate(() => {
   hideAll();
 });
 
-document.getElementById("submit").onclick = async () => {
+async function submitAnswer() {
   const answer = document.getElementById("answer").value.trim();
   const error = document.getElementById("gate-error");
-  error.classList.add("hidden");
+  error.textContent = "";
   if (!answer) {
     return;
   }
   const judged = await window.sentinel.submitAnswer(answer);
   if (judged && judged.ok === false) {
     error.textContent = judged.reason || "Try again.";
-    error.classList.remove("hidden");
+  }
+}
+
+document.getElementById("submit").onclick = submitAnswer;
+document.getElementById("answer").onkeydown = (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    submitAnswer();
   }
 };

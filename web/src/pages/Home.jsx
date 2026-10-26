@@ -12,7 +12,6 @@ export default function Home() {
         </p>
         <div className="cta">
           <Link className="btn lg" to="/download">Download for Mac</Link>
-          <Link className="btn ghost lg" to="/how">How it works</Link>
         </div>
         <p className="quiet hero-note">macOS 12 or later · Apple silicon and Intel</p>
         <ol className="start">
@@ -22,11 +21,11 @@ export default function Home() {
           </li>
           <li>
             <Link to="/groq">Add a Groq API key</Link>
-            <span>Free. Paste it in Settings.</span>
+            <span>Get a free key to paste in settings.</span>
           </li>
           <li>
             <Link to="/how">How it works</Link>
-            <span>Name the goal. Sentinel watches the frontmost app and tab.</span>
+            <span>Name a goal and Sentinel will keep you accountable.</span>
           </li>
         </ol>
       </section>

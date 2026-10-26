@@ -28,7 +28,6 @@ const DEFAULT_SETTINGS = {
   provider: "groq",
   apiKey: "",
   model: "openai/gpt-oss-20b",
-  ollamaUrl: "http://localhost:11434/v1/chat/completions",
   graceSeconds: 45,
   companionApps: ["Spotify", "Music", "Notes"],
   companionSites: []

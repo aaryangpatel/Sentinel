@@ -1,6 +1,6 @@
 "use strict";
 
-const { currentActivity, interruptActivity } = require("./watcher");
+const { currentActivity } = require("./watcher");
 const classify = require("./classify");
 
 const POLL_MS = 2000;
@@ -16,6 +16,7 @@ class Engine {
     this.focus = false;
     this.busy = false;
     this.gateOpen = false;
+    this.breakActive = false;
     this.offSince = null;
     this.lastFingerprint = "";
     this.lastClass = "";
@@ -57,6 +58,7 @@ class Engine {
     this.task = task;
     this.focus = true;
     this.gateOpen = false;
+    this.breakActive = false;
     this.offSince = null;
     this.lastFingerprint = "";
     this.lastClass = "";
@@ -72,6 +74,7 @@ class Engine {
     await this.flushSegment();
     this.focus = false;
     this.gateOpen = false;
+    this.breakActive = false;
     this.offSince = null;
     this.segmentMeta = null;
     this.gatedFingerprint = "";
@@ -114,7 +117,7 @@ class Engine {
   }
 
   graceSeconds() {
-    const base = this.settings().graceSeconds || 45;
+    const base = Math.max(5, Number(this.settings().graceSeconds) || 45);
     return this.priorOffTask ? Math.min(base, 15) : base;
   }
 
@@ -149,6 +152,9 @@ class Engine {
     }
 
     const fp = this.fingerprint(activity);
+    if (this.breakActive) {
+      return;
+    }
     if (this.gateOpen) {
       if (this.gatedFingerprint && fp !== this.gatedFingerprint) {
         this.gateOpen = false;
@@ -220,8 +226,11 @@ class Engine {
     if ((Date.now() - this.offSince) / 1000 < this.graceSeconds()) {
       return;
     }
-    const question = await classify.generateQuestion(this.settings(), this.task.goal, activity, this.lastReason);
+    const tab = activity.title || activity.domain || activity.app || "this window";
+    const goal = this.task.goal || "your goal";
+    const question = `Does “${tab}” match your goal “${goal}”?`;
     this.gateOpen = true;
+    this.breakActive = false;
     this.gatedFingerprint = this.fingerprint(activity);
     this.hooks.onGate({
       goal: this.task.goal,
@@ -260,6 +269,7 @@ class Engine {
         domain: this.lastActivity.domain || ""
       };
       this.gateOpen = false;
+      this.breakActive = false;
       this.gatedFingerprint = "";
       this.offSince = null;
       this.priorOffTask = false;
@@ -270,7 +280,7 @@ class Engine {
       return judged;
     }
     this.priorOffTask = true;
-    interruptActivity(this.lastActivity);
+    this.breakActive = true;
     this.hooks.onBreak({
       seconds: 18,
       goal: this.task.goal
@@ -279,6 +289,7 @@ class Engine {
   }
 
   finishBreak() {
+    this.breakActive = false;
     this.gateOpen = false;
     this.gatedFingerprint = "";
     this.offSince = null;

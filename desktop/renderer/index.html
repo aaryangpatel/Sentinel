@@ -13,7 +13,6 @@
     <div class="auth-card">
       <p class="eyebrow">Sentinel</p>
       <h1 id="auth-title">Sign in</h1>
-      <p class="lede">Sign in to save sessions, analytics, and Circles.</p>
       <div class="tabs">
         <button type="button" id="tab-login" class="tab on">Sign in</button>
         <button type="button" id="tab-register" class="tab">Create account</button>
@@ -93,7 +92,7 @@
             <div id="focus-chips" class="chips"></div>
             <div id="focus-site-chips" class="chips"></div>
             <div class="row">
-              <input id="companion-add" placeholder="Spotify or khanacademy.org">
+              <input id="companion-add">
               <button type="button" id="companion-add-btn" class="ghost">Add</button>
             </div>
           </div>
@@ -191,15 +190,13 @@
             <select id="provider">
               <option value="groq">Groq (free key)</option>
               <option value="gemini">Gemini</option>
-              <option value="ollama">Ollama (local)</option>
             </select>
           </label>
           <p id="groq-help" class="copy">Sentinel needs a free Groq API key to classify the frontmost app. <button type="button" id="settings-groq-guide" class="link">API key instructions</button>.</p>
           <label>API key <input id="api-key" type="password" placeholder="gsk_..."></label>
           <label>Model <input id="model" type="text" placeholder="openai/gpt-oss-20b"></label>
-          <label>Ollama URL <input id="ollama-url" type="text"></label>
           <label>Grace before the question (seconds)
-            <input id="grace" type="range" min="15" max="120" step="5">
+            <input id="grace" type="range" min="5" max="120" step="5">
             <span id="grace-val">45s</span>
           </label>
           <p class="quiet">Allow Accessibility, Screen Recording, and Automation when macOS asks. Edit always-allowed apps and sites on Focus.</p>
