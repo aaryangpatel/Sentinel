@@ -2,7 +2,14 @@
 
 const { spawnSync } = require("child_process");
 
-const SELF_APPS = new Set(["sentinel", "electron"]);
+const SELF_APPS = new Set([
+  "sentinel",
+  "electron",
+  "sentinel helper",
+  "sentinel helper (gpu)",
+  "sentinel helper (renderer)",
+  "sentinel helper (plugin)"
+]);
 const BROWSERS = {
   "google chrome": "chrome",
   chrome: "chrome",

@@ -319,22 +319,9 @@ th { color: var(--muted); font-weight: 600; }
 
 #auth-name-wrap.hidden { display: none !important; }
 
-.past-tasks {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-}
-.past-tasks li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
-  border-top: 1px solid var(--line);
-}
-.past-tasks li:last-child { border-bottom: 1px solid var(--line); }
-.past-tasks .goal { flex: 1; font-weight: 500; }
-.past-tasks .when { color: var(--muted); font-size: 12px; margin-right: 8px; }
+.task-table { width: 100%; }
+.task-table .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.task-table .task-delete { margin: 0; padding: 4px 10px; font-size: 12px; }
 
 .notice { margin-bottom: 16px; }
 .rail-out { margin-top: auto; width: 100%; }

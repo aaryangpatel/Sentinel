@@ -1,22 +1,26 @@
 "use strict";
 
 const CLASSIFY_SYSTEM = `You classify whether a Mac window matches a student's stated goal.
-Return JSON only: {"classification":"on-task"|"ambiguous"|"off-task","reason":"one short sentence"}
+Return JSON only: {"classification":"on-task"|"off-task","reason":"one short sentence"}
+Never return ambiguous. Always pick on-task or off-task.
 Rules:
-- Use the page title, site, and URL path. Do not say the title is empty if a site or video title is present.
-- Judge this specific page against this goal, not the brand. YouTube lectures can be on-task; gameplay, shorts, music videos, and "recommended" fluff are off-task.
+- Use whatever you have: app name, site, URL path, and page title. A title is helpful but not required.
+- If title/site/path are missing, decide from the app name alone against the goal (e.g. Cursor/VS Code/Notes for schoolwork → on-task; Messages/TikTok/Discord for homework → off-task).
+- Judge this specific window against this goal, not the brand. YouTube lectures can be on-task; gameplay, shorts, music videos, and "recommended" fluff are off-task.
 - reddit, tiktok, instagram, twitter/x, discord, netflix, twitch, and games are off-task unless the title clearly serves the goal.
 - IDEs, docs, notes, Wikipedia, Khan Academy, GitHub, and school tools are on-task when they could reasonably serve the goal.
-- If the student already justified this same site, honor that only when THIS title still matches that reason. A new unrelated video or thread is a new decision.
-- If you have a real title or URL path, pick on-task or off-task. Use ambiguous only when there is truly no title, site, or path.`;
+- If the student already justified this same site, honor that only when THIS title still matches that reason. A new unrelated video or thread is a new decision.`;
 
 const QUESTION_SYSTEM = `Return JSON only: {"question":"..."}.
 Ask one specific question about how THIS page or video connects to the goal. Mention the title if you have it. No preamble.`;
 
 const JUDGE_SYSTEM = `Decide if the student's sentence honestly ties THIS window to the goal.
 Return JSON only: {"verdict":"justified"|"not_justified","reason":"one short sentence"}
-justified only if the link is specific and checkable for this title/site.
-"idk", "just watching", "bored", "I need a break", or a vague "it's related" are not_justified.`;
+Accept justified when they give a specific, believable how/why that connects what they are doing here to the goal.
+The window title is often empty or just the app name (Discord, Messages, Finder, etc.) — that alone is not a reason to reject. Judge the student's sentence, not the brand.
+Examples that should pass: asking a classmate about a homework problem on Discord; a study-group voice call for this class; checking a project channel for assignment files.
+Reject: "idk", "just chatting", "bored", "I need a break", "it's related", or any answer with no concrete link to the goal.
+Do not reject only because the app is Discord or usually distracting.`;
 
 function parseJsonObject(text) {
   if (!text) {
@@ -180,17 +184,40 @@ async function classifyActivity(settings, goal, activity, memory) {
   }
   const asked = await askJson(settings, CLASSIFY_SYSTEM, windowContext(goal, activity, memory));
   if (!asked.ok) {
+    // No model response — stay neutral so we do not interrupt on API failure.
     return { classification: "ambiguous", reason: asked.error, status: 0 };
   }
-  const classification = asked.data.classification;
-  if (!["on-task", "ambiguous", "off-task"].includes(classification)) {
-    return { classification: "ambiguous", reason: "The model was unsure, so this was not interrupted.", status: 200 };
+  let classification = asked.data.classification;
+  if (classification === "ambiguous" || !["on-task", "off-task"].includes(classification)) {
+    // Model must commit; fall back using app name vs typical work tools.
+    classification = likelyWorkApp(activity.app) ? "on-task" : "off-task";
   }
   return {
     classification,
-    reason: asked.data.reason || "",
+    reason: asked.data.reason || (classification === "on-task"
+      ? "Predicted on-task from the available window info."
+      : "Predicted off-task from the available window info."),
     status: 200
   };
+}
+
+/**
+ * Rough app-name fallback when the model refuses to pick on-task/off-task.
+ * @param {string} appName frontmost application name
+ * @returns {boolean} true when the app is typically used for school/work
+ */
+function likelyWorkApp(appName) {
+  const app = String(appName || "").trim().toLowerCase();
+  if (!app) {
+    return false;
+  }
+  const work = [
+    "cursor", "code", "visual studio", "xcode", "terminal", "iterm",
+    "notes", "notion", "obsidian", "bear", "pages", "word", "docs",
+    "preview", "finder", "excel", "numbers", "keynote", "powerpoint",
+    "figma", "sketch", "photoshop", "illustrator"
+  ];
+  return work.some((item) => app.indexOf(item) !== -1);
 }
 
 async function generateQuestion(settings, goal, activity, reason) {

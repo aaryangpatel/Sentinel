@@ -46,8 +46,11 @@ window.sentinel.onBreak((payload) => {
   clearBreak();
   const seconds = payload && payload.seconds ? payload.seconds : 18;
   const goal = payload && payload.goal ? payload.goal : "";
+  const reason = payload && payload.reason ? payload.reason : "";
   show("brk");
-  document.getElementById("brk-goal").textContent = goal ? "Goal: " + goal : "";
+  document.getElementById("brk-goal").textContent = reason
+    ? reason + (goal ? " · Goal: " + goal : "")
+    : (goal ? "Goal: " + goal : "");
   const phase = document.getElementById("phase");
   let inhale = true;
   phase.textContent = "Inhale";

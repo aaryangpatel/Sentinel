@@ -149,9 +149,11 @@ async function boot() {
 function enter(user) {
   show("auth", false);
   show("shell", true);
-  displayName = user.name || String(user.email || user.username || "").split("@")[0];
+  // Use the signup name only — never fall back to the email address.
+  const rawName = String(user.name || "").trim();
+  displayName = rawName && rawName.indexOf("@") === -1 ? rawName : "there";
   $("who").textContent = displayName;
-  $("focus-greeting").textContent = displayName ? `Hi, ${displayName}` : "Live session";
+  $("focus-greeting").textContent = `Hi, ${displayName}`;
   if (user.settings) {
     $("provider").value = !user.settings.provider || user.settings.provider === "stub" || user.settings.provider === "ollama"
       ? "groq"
@@ -405,35 +407,22 @@ function formatTaskDay(ts) {
   return `${d.getFullYear()}-${month}-${day}`;
 }
 
-function paintPastTasks(tasks) {
-  const root = $("past-tasks");
+/**
+ * Wire Delete on each by-task row. Removes the task and reloads analytics.
+ * @param {HTMLElement} body tbody#task-rows
+ */
+function bindTaskDeletes(body) {
   const error = $("task-error");
   if (error) {
     error.textContent = "";
   }
-  if (!root) {
-    return;
-  }
-  root.innerHTML = "";
-  if (!tasks.length) {
-    root.innerHTML = "<li class=\"quiet\">No saved tasks yet.</li>";
-    return;
-  }
-  tasks.forEach((task) => {
-    const item = document.createElement("li");
-    item.innerHTML = `
-      <span class="goal">${escapeHtml(task.goal)}</span>
-      <span class="when">${escapeHtml(formatTaskDay(task.createdAt))}</span>
-      <button type="button" class="ghost task-delete" data-id="${escapeHtml(task.id)}">Delete</button>`;
-    root.appendChild(item);
-  });
-  root.querySelectorAll(".task-delete").forEach((button) => {
+  body.querySelectorAll(".task-delete").forEach((button) => {
     button.onclick = async () => {
       if (error) {
         error.textContent = "";
       }
       const taskId = button.dataset.id;
-      const row = button.closest("li");
+      const row = button.closest("tr");
       button.disabled = true;
       button.textContent = "Deleting…";
       let result;
@@ -460,9 +449,6 @@ function paintPastTasks(tasks) {
       if (option) {
         option.remove();
       }
-      if (!$("past-tasks").querySelector(".task-delete")) {
-        $("past-tasks").innerHTML = "<li class=\"quiet\">No saved tasks yet.</li>";
-      }
       await loadAnalytics();
     };
   });
@@ -473,14 +459,13 @@ async function loadAnalytics() {
   const select = $("task-filter");
   const current = select.value;
   select.innerHTML = '<option value="">All tasks</option>';
-  tasks.forEach((task) => {
+  (tasks || []).forEach((task) => {
     const option = document.createElement("option");
     option.value = String(task.id);
     option.textContent = task.goal;
     select.appendChild(option);
   });
   select.value = current;
-  paintPastTasks(tasks || []);
   const data = await window.sentinel.analytics($("day").value, select.value || null);
   if (!data) {
     return;
@@ -505,11 +490,21 @@ async function loadAnalytics() {
 
   const body = $("task-rows");
   body.innerHTML = "";
-  data.tasks.forEach((row) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${escapeHtml(row.goal)}</td><td>${fmtMin(row.onMs)}</td><td>${fmtMin(row.offMs)}</td><td>${fmtMin(row.ambMs)}</td>`;
-    body.appendChild(tr);
-  });
+  if (!data.tasks.length) {
+    body.innerHTML = "<tr><td colspan=\"5\" class=\"quiet\">No saved tasks yet.</td></tr>";
+  } else {
+    data.tasks.forEach((row) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(row.goal)}</td>
+        <td class="when">${escapeHtml(formatTaskDay(row.createdAt))}</td>
+        <td>${fmtMin(row.onMs)}</td>
+        <td>${fmtMin(row.offMs)}</td>
+        <td><button type="button" class="ghost task-delete" data-id="${escapeHtml(row.id)}">Delete</button></td>`;
+      body.appendChild(tr);
+    });
+    bindTaskDeletes(body);
+  }
 
   const ctx = $("chart");
   if (chart) {
@@ -540,18 +535,32 @@ function escapeHtml(value) {
 
 function paintStatus(status) {
   const activity = status.activity;
-  if (activity) {
+  if (activity && activity.ignored) {
+    $("now-app").textContent = "Sentinel";
+    $("now-meta").textContent = "Not watching other apps while you are here";
+    $("now-class").textContent = "—";
+    $("now-reason").textContent = "";
+  } else if (activity) {
     $("now-app").textContent = activity.app || "Unknown app";
     const bits = [activity.domain, activity.title || activity.path].filter(Boolean);
     $("now-meta").textContent = bits.join(" · ");
+    $("now-class").textContent = status.lastClass || "—";
+    $("now-reason").textContent = status.lastReason || "";
+  } else {
+    $("now-app").textContent = "Waiting for an app…";
+    $("now-meta").textContent = "";
+    $("now-class").textContent = status.lastClass || "—";
+    $("now-reason").textContent = status.lastReason || "";
   }
-  $("now-class").textContent = status.lastClass || "—";
-  $("now-reason").textContent = status.lastReason || "";
   const pill = $("focus-pill");
   pill.className = "pill";
   if (!status.focus) {
     pill.textContent = "Idle";
     $("toggle").textContent = "Start focus";
+  } else if (activity && activity.ignored) {
+    pill.textContent = "Paused";
+    pill.classList.add("live");
+    $("toggle").textContent = "Stop focus";
   } else if (status.lastClass === "off-task") {
     pill.textContent = "Off track";
     pill.classList.add("off");
@@ -562,6 +571,7 @@ function paintStatus(status) {
     $("toggle").textContent = "Stop focus";
   }
   $("grace-line").textContent = status.graceRemaining !== null && status.lastClass === "off-task"
+    && !(activity && activity.ignored)
     ? `Question in ${status.graceRemaining}s`
     : "";
 }

@@ -133,23 +133,17 @@
             <ol id="off-list" class="rank"></ol>
           </div>
         </div>
-        <details class="fold card">
+        <details class="fold card" open>
           <summary>By task</summary>
           <div class="fold-body">
-            <table>
+            <p class="copy">On/off times are for the selected day. Delete removes the task and its history.</p>
+            <p id="task-error" class="error"></p>
+            <table class="task-table">
               <thead>
-                <tr><th>Task</th><th>On</th><th>Off</th><th>Ambiguous</th></tr>
+                <tr><th>Task</th><th>Date</th><th>On</th><th>Off</th><th></th></tr>
               </thead>
               <tbody id="task-rows"></tbody>
             </table>
-          </div>
-        </details>
-        <details class="fold card">
-          <summary>Past tasks</summary>
-          <div class="fold-body">
-            <p class="copy">Delete a task to remove it and its session history.</p>
-            <p id="task-error" class="error"></p>
-            <ul id="past-tasks" class="past-tasks"></ul>
           </div>
         </details>
       </section>

@@ -51,9 +51,8 @@ class Engine {
 
   async startFocus(goal) {
     const nextGoal = String(goal || "").trim();
-    if (!this.task || this.task.goal !== nextGoal) {
-      this.justifications = {};
-    }
+    // Fresh session: drop prior justifications so old goals cannot leak into this one.
+    this.justifications = {};
     const task = await this.store.createTask(this.userId, nextGoal);
     this.task = task;
     this.focus = true;
@@ -62,9 +61,12 @@ class Engine {
     this.offSince = null;
     this.lastFingerprint = "";
     this.lastClass = "";
+    this.lastReason = "";
+    this.lastActivity = null;
     this.toastShownFor = "";
     this.gatedFingerprint = "";
     this.priorOffTask = false;
+    this.segmentMeta = null;
     await this.flushSegment();
     this.emit();
     return task;
@@ -77,6 +79,12 @@ class Engine {
     this.breakActive = false;
     this.offSince = null;
     this.segmentMeta = null;
+    this.justifications = {};
+    this.lastFingerprint = "";
+    this.lastClass = "";
+    this.lastReason = "";
+    this.lastActivity = null;
+    this.toastShownFor = "";
     this.gatedFingerprint = "";
     this.hooks.onHide();
     this.emit();
@@ -138,16 +146,43 @@ class Engine {
     };
   }
 
+  /**
+   * Pause classification while Sentinel itself is frontmost so the UI does not
+   * keep showing the previous app (or old goal reasons).
+   */
+  async pauseForSelf(activity) {
+    const wasOther = this.lastActivity && !this.lastActivity.ignored;
+    if (wasOther || this.lastClass || this.lastReason) {
+      await this.flushSegment();
+      this.segmentMeta = null;
+      this.lastFingerprint = "";
+      this.lastClass = "";
+      this.lastReason = "";
+      this.offSince = null;
+      this.toastShownFor = "";
+      if (this.gateOpen && !this.breakActive) {
+        this.gateOpen = false;
+        this.gatedFingerprint = "";
+        this.hooks.onHide();
+      }
+    }
+    this.lastActivity = activity;
+  }
+
   async tick() {
     const activity = await currentActivity();
-    if (activity && !activity.ignored) {
-      this.lastActivity = activity;
-    }
-    this.emit();
-    if (!this.focus || this.busy || !this.task) {
+    if (!activity) {
+      this.emit();
       return;
     }
-    if (!activity || activity.ignored) {
+    if (activity.ignored) {
+      await this.pauseForSelf(activity);
+      this.emit();
+      return;
+    }
+    this.lastActivity = activity;
+    this.emit();
+    if (!this.focus || this.busy || !this.task) {
       return;
     }
 
@@ -283,7 +318,8 @@ class Engine {
     this.breakActive = true;
     this.hooks.onBreak({
       seconds: 18,
-      goal: this.task.goal
+      goal: this.task.goal,
+      reason: judged.reason || "That answer did not clearly tie this window to your goal."
     });
     return judged;
   }

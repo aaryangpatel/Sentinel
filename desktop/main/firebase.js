@@ -286,12 +286,15 @@ async function saveSettings(uid, settings) {
   const snap = await getDoc(ref);
   const prev = snap.exists() ? snap.data() : {};
   const next = mergeSettings(prev.settings, settings);
+  const email = prev.email || (auth.currentUser && auth.currentUser.email) || "";
+  const name = String(prev.name || "").trim() || displayName(email);
   await setDoc(ref, {
-    email: prev.email || (auth.currentUser && auth.currentUser.email) || "",
+    email,
+    name,
     settings: next,
     createdAt: prev.createdAt || Date.now()
-  });
-  return publicUser(uid, prev.email, next);
+  }, { merge: true });
+  return publicUser(uid, email, next, name);
 }
 
 async function createTask(userId, goal) {
@@ -383,7 +386,7 @@ async function analytics(userId, dayKey, taskId) {
   let eventCount = 0;
   const byApp = {};
   const byDomain = {};
-  const byTask = {};
+  const byTaskId = {};
   snap.forEach((row) => {
     const event = row.data();
     if (event.ts < from || event.ts >= to) {
@@ -406,17 +409,30 @@ async function analytics(userId, dayKey, taskId) {
     } else if (event.classification === "ambiguous") {
       ambMs += ms;
     }
-    const label = taskNames[event.taskId] || "Untitled";
-    if (!byTask[label]) {
-      byTask[label] = { onMs: 0, offMs: 0, ambMs: 0 };
+    const tid = event.taskId || "";
+    if (!byTaskId[tid]) {
+      byTaskId[tid] = { onMs: 0, offMs: 0, ambMs: 0 };
     }
     if (event.classification === "on-task") {
-      byTask[label].onMs += ms;
+      byTaskId[tid].onMs += ms;
     } else if (event.classification === "off-task") {
-      byTask[label].offMs += ms;
+      byTaskId[tid].offMs += ms;
     } else if (event.classification === "ambiguous") {
-      byTask[label].ambMs += ms;
+      byTaskId[tid].ambMs += ms;
     }
+  });
+  // One row per saved task: day totals + created date (for delete in the UI).
+  const listed = taskId ? tasks.filter((task) => task.id === taskId) : tasks;
+  const taskRows = listed.map((task) => {
+    const stats = byTaskId[task.id] || { onMs: 0, offMs: 0, ambMs: 0 };
+    return {
+      id: task.id,
+      goal: task.goal || taskNames[task.id] || "Untitled",
+      createdAt: task.createdAt || 0,
+      onMs: stats.onMs,
+      offMs: stats.offMs,
+      ambMs: stats.ambMs
+    };
   });
   return {
     onMs,
@@ -425,7 +441,7 @@ async function analytics(userId, dayKey, taskId) {
     totalMs: onMs + offMs + ambMs,
     apps: rank(byApp),
     domains: rank(byDomain),
-    tasks: Object.keys(byTask).map((goal) => Object.assign({ goal }, byTask[goal])),
+    tasks: taskRows,
     eventCount
   };
 }
@@ -479,32 +495,6 @@ function streakFromDays(daysWithFocus) {
   return streak;
 }
 
-function badgesFromRollup(rollup) {
-  const badges = [];
-  if (rollup.onMs >= 60000) {
-    badges.push("First session");
-  }
-  if (rollup.rescues >= 1) {
-    badges.push("Honest rescue");
-  }
-  if (rollup.rescues >= 3) {
-    badges.push("Comeback kid");
-  }
-  if (rollup.youtubeOn) {
-    badges.push("Lecture, not gameplay");
-  }
-  if (rollup.longestOnMs >= 25 * 60 * 1000) {
-    badges.push("Deep work");
-  }
-  if (rollup.streak >= 3) {
-    badges.push("3-day streak");
-  }
-  if (rollup.share >= 0.8 && rollup.onMs >= 20 * 60 * 1000) {
-    badges.push("Lock-in");
-  }
-  return badges;
-}
-
 async function rollupUser(userId) {
   const snap = await getDocs(query(collection(firestore, "events"), where("userId", "==", userId)));
   const week = weekKey();
@@ -514,8 +504,6 @@ async function rollupUser(userId) {
   let offMs = 0;
   let ambMs = 0;
   let rescues = 0;
-  let youtubeOn = false;
-  let longestOnMs = 0;
   const focusDays = [];
   const byDay = {};
   snap.forEach((row) => {
@@ -533,11 +521,6 @@ async function rollupUser(userId) {
     const ms = event.durationMs || 0;
     if (event.classification === "on-task") {
       onMs += ms || 2500;
-      longestOnMs = Math.max(longestOnMs, ms);
-      const hay = `${event.app || ""} ${event.domain || ""} ${event.title || ""}`.toLowerCase();
-      if (hay.indexOf("youtube") !== -1) {
-        youtubeOn = true;
-      }
     } else if (event.classification === "off-task") {
       offMs += ms || 2500;
     } else if (event.classification === "ambiguous") {
@@ -558,14 +541,9 @@ async function rollupUser(userId) {
     offMs,
     ambMs,
     rescues,
-    youtubeOn,
-    longestOnMs,
     streak,
     share,
-    score: intentScore(onMs, offMs, rescues),
-    badges: badgesFromRollup({
-      onMs, rescues, youtubeOn, longestOnMs, streak, share
-    })
+    score: intentScore(onMs, offMs, rescues)
   };
 }
 
@@ -593,14 +571,12 @@ async function publishWeekly(userId, email) {
     rescues: rollup.rescues,
     streak: rollup.streak,
     score: rollup.score,
-    badges: rollup.badges,
     updatedAt: Date.now()
   };
   await setDoc(doc(firestore, "weeklyStats", userId + "_" + week), body);
   await setPresence(userId, email, {
     streak: rollup.streak,
-    score: rollup.score,
-    badges: rollup.badges
+    score: rollup.score
   });
   return body;
 }
@@ -690,7 +666,7 @@ async function joinCircle(userId, email, code) {
       name: data.name,
       code: data.code,
       createdBy: data.createdBy,
-      members: [{ userId, name: memberName, me: true, score: 0, onMs: 0, offMs: 0, streak: 0, rescues: 0, badges: [] }],
+      members: [{ userId, name: memberName, me: true, score: 0, onMs: 0, offMs: 0, streak: 0, rescues: 0 }],
       huddle: [],
       average: 0,
       isOwner: data.createdBy === userId
@@ -733,7 +709,7 @@ async function getCircle(circleId, viewerId) {
     const member = row.data();
     const statsSnap = await getDoc(doc(firestore, "weeklyStats", member.userId + "_" + week));
     const stats = statsSnap.exists() ? statsSnap.data() : {
-      score: 0, onMs: 0, offMs: 0, streak: 0, rescues: 0, badges: []
+      score: 0, onMs: 0, offMs: 0, streak: 0, rescues: 0
     };
     const profileSnap = await getDoc(doc(firestore, "profiles", member.userId));
     const profile = profileSnap.exists() ? profileSnap.data() : {};
@@ -748,7 +724,6 @@ async function getCircle(circleId, viewerId) {
       offMs: stats.offMs || 0,
       streak: stats.streak || 0,
       rescues: stats.rescues || 0,
-      badges: stats.badges || [],
       me: member.userId === viewerId
     });
     if (profile.focus && profile.goal) {
