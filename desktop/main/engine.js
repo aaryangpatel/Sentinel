@@ -146,11 +146,10 @@ class Engine {
     };
   }
 
-  /**
-   * Pause classification while Sentinel itself is frontmost so the UI does not
-   * keep showing the previous app (or old goal reasons).
-   */
   async pauseForSelf(activity) {
+    if (this.gateOpen || this.breakActive) {
+      return;
+    }
     const wasOther = this.lastActivity && !this.lastActivity.ignored;
     if (wasOther || this.lastClass || this.lastReason) {
       await this.flushSegment();
@@ -160,11 +159,6 @@ class Engine {
       this.lastReason = "";
       this.offSince = null;
       this.toastShownFor = "";
-      if (this.gateOpen && !this.breakActive) {
-        this.gateOpen = false;
-        this.gatedFingerprint = "";
-        this.hooks.onHide();
-      }
     }
     this.lastActivity = activity;
   }
