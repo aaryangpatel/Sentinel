@@ -324,6 +324,7 @@ async function listTasks(userId) {
 
 /**
  * Delete a task and every analytics event tied to it.
+ * Events are loaded by userId (already indexed) then filtered by taskId.
  */
 async function deleteTask(userId, taskId) {
   init();
@@ -339,9 +340,9 @@ async function deleteTask(userId, taskId) {
   if (snap.data().userId !== userId) {
     return { ok: false, error: "You can only delete your own tasks." };
   }
-  const events = await getDocs(query(collection(firestore, "events"), where("taskId", "==", id)));
+  const events = await getDocs(query(collection(firestore, "events"), where("userId", "==", userId)));
   for (const row of events.docs) {
-    if (row.data().userId === userId) {
+    if (row.data().taskId === id) {
       await deleteDoc(row.ref);
     }
   }

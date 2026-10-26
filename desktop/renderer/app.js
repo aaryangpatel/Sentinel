@@ -331,7 +331,7 @@ function paintCircles(circles) {
   const root = $("circle-list");
   root.innerHTML = "";
   if (!circles.length) {
-    root.innerHTML = "<p class=\"copy\">Create a circle and send the code to friends. You compete on this week’s Intent Score, not raw screen time.</p>";
+    root.innerHTML = "<p class=\"copy\">Create a circle or join with a code to get started.</p>";
     paintHuddle([]);
     return;
   }
@@ -446,11 +446,18 @@ function paintPastTasks(tasks) {
       const taskId = button.dataset.id;
       const row = button.closest("li");
       button.disabled = true;
-      const result = await window.sentinel.deleteTask(taskId);
-      if (!result.ok) {
+      button.textContent = "Deleting…";
+      let result;
+      try {
+        result = await window.sentinel.deleteTask(taskId);
+      } catch (err) {
+        result = { ok: false, error: (err && err.message) || "Could not delete that task." };
+      }
+      if (!result || !result.ok) {
         button.disabled = false;
+        button.textContent = "Delete";
         if (error) {
-          error.textContent = result.error || "Could not delete that task.";
+          error.textContent = (result && result.error) || "Could not delete that task. Publish the latest Firestore rules if this keeps failing.";
         }
         return;
       }
@@ -460,14 +467,14 @@ function paintPastTasks(tasks) {
       if ($("task-filter").value === taskId) {
         $("task-filter").value = "";
       }
-      const option = $("task-filter").querySelector(`option[value="${CSS.escape(taskId)}"]`);
+      const option = Array.from($("task-filter").options).find((item) => item.value === taskId);
       if (option) {
         option.remove();
       }
       if (!$("past-tasks").querySelector(".task-delete")) {
         $("past-tasks").innerHTML = "<li class=\"quiet\">No saved tasks yet.</li>";
       }
-      loadAnalytics();
+      await loadAnalytics();
     };
   });
 }
@@ -547,7 +554,7 @@ function paintStatus(status) {
   if (activity) {
     $("now-app").textContent = activity.app || "Unknown app";
     const bits = [activity.domain, activity.title || activity.path].filter(Boolean);
-    $("now-meta").textContent = bits.join(" · ") || "Waiting for the tab title… allow Automation for Chrome.";
+    $("now-meta").textContent = bits.join(" · ");
   }
   $("now-class").textContent = status.lastClass || "—";
   $("now-reason").textContent = status.lastReason || "";

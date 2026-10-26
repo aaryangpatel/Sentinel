@@ -254,7 +254,11 @@ ipcMain.handle("tasks:delete", async (_event, taskId) => {
   if (!currentUser) {
     return { ok: false, error: "Not signed in." };
   }
-  return firebase.deleteTask(currentUser.id, taskId);
+  try {
+    return await firebase.deleteTask(currentUser.id, taskId);
+  } catch (err) {
+    return { ok: false, error: (err && err.message) || "Could not delete that task." };
+  }
 });
 ipcMain.handle("circles:create", async (_event, name) => {
   if (!currentUser) {
@@ -289,15 +293,15 @@ ipcMain.handle("circles:list", async () => {
 function webOrigin() {
   const file = path.join(__dirname, "..", "web-origin.json");
   if (!fs.existsSync(file)) {
-    return "https://procrastination.vercel.app";
+    return "https://sentinel-nine-gold-88.vercel.app";
   }
   const data = JSON.parse(fs.readFileSync(file, "utf8"));
   const origin = data && data.origin ? String(data.origin).replace(/\/$/, "") : "";
-  return origin || "https://procrastination.vercel.app";
+  return origin || "https://sentinel-nine-gold-88.vercel.app";
 }
 
 function groqGuideUrl() {
-  return webOrigin() + "/groq";
+  return "https://sentinel-nine-gold-88.vercel.app/groq";
 }
 
 function isHttpUrl(url) {

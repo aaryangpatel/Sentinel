@@ -8,9 +8,8 @@ export default function Download() {
       <section className="prose">
         <h1>Download</h1>
         <p className="lede">
-          Get the Mac installer from GitHub Releases
-          (<span className="code">Sentinel-2.0.0.dmg</span>). The site links
-          there because the disk image is too large to host on Vercel.
+          Download Sentinel for Mac from GitHub Releases, then open it and drag
+          the app into Applications.
         </p>
         <div className="cta">
           <a className="btn lg" href={dmgUrl}>Download Sentinel for Mac</a>
@@ -19,28 +18,28 @@ export default function Download() {
         <p className="quiet">macOS 12 or later. First launch: right-click the app, then choose Open.</p>
         <ol className="steps">
           <li>
-            <strong>Save the disk image</strong>
-            The file is Sentinel-2.0.0.dmg.
+            <strong>Download the installer</strong>
+            Save <span className="code">Sentinel-2.0.0.dmg</span> from the button above.
           </li>
           <li>
-            <strong>Open it and drag Sentinel into Applications</strong>
+            <strong>Install</strong>
+            Open the disk image and drag Sentinel into Applications.
           </li>
           <li>
-            <strong>Right-click → Open</strong>
-            Allow Accessibility, Screen Recording, and Automation when asked.
+            <strong>Open it once from the Finder</strong>
+            Right-click → Open. Allow Accessibility, Screen Recording, and
+            Automation when asked.
           </li>
           <li>
-            <strong>Add a Groq key in Settings</strong>
-            Follow the <Link to="/groq">API key steps</Link>. Without a key the
-            app will not classify windows.
+            <strong>Add a Groq key</strong>
+            Follow the <Link to="/groq">API key steps</Link>, then start a focus
+            session in the app.
           </li>
         </ol>
         <p className="copy">
-          If the download link 404s, the release asset is not up yet. Use{" "}
-          <a href={releasesUrl} target="_blank" rel="noreferrer">GitHub Releases</a>
-          {" "}or run from source:
+          Prefer running from source?{" "}
+          <span className="code">cd desktop && npm install && npm start</span>
         </p>
-        <p className="copy"><span className="code">cd desktop && npm install && npm start</span></p>
       </section>
     </Layout>
   );

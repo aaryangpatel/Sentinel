@@ -344,3 +344,41 @@ th { color: var(--muted); font-weight: 600; }
 .past-tasks li:last-child { border-bottom: 1px solid var(--line); }
 .past-tasks .goal { flex: 1; font-weight: 500; }
 .past-tasks .when { color: var(--muted); font-size: 12px; margin-right: 8px; }
+
+.notice { margin-bottom: 16px; }
+.rail-out { margin-top: auto; width: 100%; }
+.circle-intro { margin: 0 0 18px; max-width: 36em; }
+.now-meta:empty { display: none; }
+.now-reason:empty { display: none; }
+
+.fold {
+  margin-top: 14px;
+  padding: 0;
+  overflow: hidden;
+}
+.fold summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 18px;
+  font-weight: 600;
+  color: var(--ink);
+  user-select: none;
+}
+.fold summary::-webkit-details-marker { display: none; }
+.fold summary::after {
+  content: "Show";
+  float: right;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fold[open] summary::after { content: "Hide"; }
+.fold-body {
+  padding: 0 18px 16px;
+  border-top: 1px solid var(--line);
+}
+.fold-body .copy { margin-top: 12px; }
+
+.card .primary { margin-top: 12px; }
+.filters label { font-size: 13px; }
+.error:empty { min-height: 0; margin: 0; }

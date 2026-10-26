@@ -13,7 +13,7 @@
     <div class="auth-card">
       <p class="eyebrow">Sentinel</p>
       <h1 id="auth-title">Sign in</h1>
-      <p class="lede">Same account as the website. Use it for sessions, analytics, and Circles.</p>
+      <p class="lede">Sign in to save sessions, analytics, and Circles.</p>
       <div class="tabs">
         <button type="button" id="tab-login" class="tab on">Sign in</button>
         <button type="button" id="tab-register" class="tab">Create account</button>
@@ -46,7 +46,7 @@
         <button type="button" data-view="circles" class="nav">Circles</button>
         <button type="button" data-view="settings" class="nav">Settings</button>
       </nav>
-      <button type="button" id="logout" class="ghost">Sign out</button>
+      <button type="button" id="logout" class="ghost rail-out">Sign out</button>
     </aside>
 
     <main>
@@ -61,9 +61,9 @@
           <span id="focus-pill" class="pill">Idle</span>
         </header>
 
-        <div id="key-banner" class="card hidden" style="margin-bottom:16px">
+        <div id="key-banner" class="card notice hidden">
           <p class="eyebrow">Groq API key</p>
-          <p class="copy">Add a free Groq key in Settings. Without it, Sentinel cannot classify windows.</p>
+          <p class="copy">Add a free Groq key in Settings so Sentinel can classify windows.</p>
           <div class="row" style="margin-top:12px">
             <button type="button" id="goto-settings" class="primary" style="margin-top:0">Open Settings</button>
             <button type="button" id="open-groq-guide" class="ghost">How to get a key</button>
@@ -73,7 +73,7 @@
         <div class="now">
           <div class="now-kicker">Frontmost</div>
           <div id="now-app" class="now-app">Waiting for an app…</div>
-          <div id="now-meta" class="now-meta">Grant Accessibility & Screen Recording if titles stay blank.</div>
+          <div id="now-meta" class="now-meta"></div>
           <div id="now-class" class="now-class">—</div>
           <p id="now-reason" class="now-reason"></p>
         </div>
@@ -89,16 +89,16 @@
           </div>
           <div class="card">
             <p class="eyebrow">Always allowed</p>
-            <p class="copy">Type an app name or site (Spotify, khanacademy.org). Press Enter or Add. Click a chip to remove it.</p>
+            <p class="copy">Type an app name or site you do not want marked off-task. Press Enter or Add. Click a chip to remove it.</p>
             <div id="focus-chips" class="chips"></div>
             <div id="focus-site-chips" class="chips"></div>
             <div class="row">
-              <input id="companion-add" placeholder="Type an app or site">
+              <input id="companion-add" placeholder="Spotify or khanacademy.org">
               <button type="button" id="companion-add-btn" class="ghost">Add</button>
             </div>
           </div>
         </div>
-        <div class="card" style="margin-top:16px">
+        <div class="card" style="margin-top:14px">
           <p class="eyebrow">Huddle</p>
           <p class="copy" id="huddle">Friends in a live session will show up here.</p>
         </div>
@@ -108,7 +108,7 @@
         <header class="page-head">
           <div>
             <p class="eyebrow">Your work</p>
-            <h2>Per task, per day</h2>
+            <h2>Analytics</h2>
           </div>
         </header>
         <div class="filters">
@@ -134,21 +134,25 @@
             <ol id="off-list" class="rank"></ol>
           </div>
         </div>
-        <div class="card">
-          <p class="eyebrow">By task</p>
-          <table>
-            <thead>
-              <tr><th>Task</th><th>On</th><th>Off</th><th>Ambiguous</th></tr>
-            </thead>
-            <tbody id="task-rows"></tbody>
-          </table>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <p class="eyebrow">Past tasks</p>
-          <p class="copy">Delete a task to remove it and its session history from your account.</p>
-          <p id="task-error" class="error"></p>
-          <ul id="past-tasks" class="past-tasks"></ul>
-        </div>
+        <details class="fold card">
+          <summary>By task</summary>
+          <div class="fold-body">
+            <table>
+              <thead>
+                <tr><th>Task</th><th>On</th><th>Off</th><th>Ambiguous</th></tr>
+              </thead>
+              <tbody id="task-rows"></tbody>
+            </table>
+          </div>
+        </details>
+        <details class="fold card">
+          <summary>Past tasks</summary>
+          <div class="fold-body">
+            <p class="copy">Delete a task to remove it and its session history.</p>
+            <p id="task-error" class="error"></p>
+            <ul id="past-tasks" class="past-tasks"></ul>
+          </div>
+        </details>
       </section>
 
       <section id="view-circles" class="view hidden">
@@ -158,7 +162,7 @@
             <h2>Circles</h2>
           </div>
         </header>
-        <p class="copy">Compete on Intent Score this week: on-task minutes × focus share, plus points for honest rescues. You can only be in one circle with the same name. Only the creator can delete a circle.</p>
+        <p class="lede circle-intro">Compete with friends to see who stays most on task.</p>
         <div class="grid-2">
           <div class="card">
             <label>New circle name</label>
@@ -190,7 +194,7 @@
               <option value="ollama">Ollama (local)</option>
             </select>
           </label>
-          <p id="groq-help" class="copy">Sentinel needs a free Groq API key to classify the frontmost app. <button type="button" id="settings-groq-guide" class="link">Open the step-by-step guide on the website</button>.</p>
+          <p id="groq-help" class="copy">Sentinel needs a free Groq API key to classify the frontmost app. <button type="button" id="settings-groq-guide" class="link">API key instructions</button>.</p>
           <label>API key <input id="api-key" type="password" placeholder="gsk_..."></label>
           <label>Model <input id="model" type="text" placeholder="openai/gpt-oss-20b"></label>
           <label>Ollama URL <input id="ollama-url" type="text"></label>
@@ -198,7 +202,7 @@
             <input id="grace" type="range" min="15" max="120" step="5">
             <span id="grace-val">45s</span>
           </label>
-          <p class="quiet">The model sees your goal, app, site, and the real tab or video title. Allow Accessibility, Screen Recording, and Automation when macOS asks. Edit always-allowed apps and sites on Focus.</p>
+          <p class="quiet">Allow Accessibility, Screen Recording, and Automation when macOS asks. Edit always-allowed apps and sites on Focus.</p>
           <button type="button" id="save-settings" class="primary">Save settings</button>
           <p id="settings-saved" class="quiet"></p>
         </div>

@@ -7,8 +7,8 @@ export default function Groq() {
       <section className="prose">
         <h1>Groq API key</h1>
         <p className="lede">
-          The classifier needs a free Groq key. No credit card. Paste it only in
-          the Mac app under Settings. Do not put it in git or a chat.
+          The classifier needs a free Groq key. Paste it only in the Mac app
+          under Settings.
         </p>
         <ol className="steps">
           <li>
@@ -48,7 +48,7 @@ export default function Groq() {
             not that a key is missing.
           </li>
         </ol>
-        <p className="copy">401 means the key was copied with a space or revoked. Ambiguous windows mean the model did not answer. “Unauthorized domain” is Firebase sign-in, not Groq.</p>
+        <p className="copy">401 means the key was copied with a space or revoked. Ambiguous windows mean the model did not answer.</p>
         <div className="cta">
           <a className="btn lg" href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Open Groq API Keys</a>
           <Link className="btn ghost lg" to="/download">Download</Link>
