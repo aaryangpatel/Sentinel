@@ -3,7 +3,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("sentinel", {
-  register: (username, password, companionApps) => ipcRenderer.invoke("auth:register", username, password, companionApps),
+  register: (username, password, extras) => ipcRenderer.invoke("auth:register", username, password, extras),
   login: (username, password) => ipcRenderer.invoke("auth:login", username, password),
   me: () => ipcRenderer.invoke("auth:me"),
   logout: () => ipcRenderer.invoke("auth:logout"),
@@ -15,8 +15,10 @@ contextBridge.exposeInMainWorld("sentinel", {
   finishBreak: () => ipcRenderer.invoke("gate:break-done"),
   analytics: (day, taskId) => ipcRenderer.invoke("analytics:get", day, taskId),
   tasks: () => ipcRenderer.invoke("tasks:list"),
+  deleteTask: (taskId) => ipcRenderer.invoke("tasks:delete", taskId),
   createCircle: (name) => ipcRenderer.invoke("circles:create", name),
   joinCircle: (code) => ipcRenderer.invoke("circles:join", code),
+  deleteCircle: (circleId) => ipcRenderer.invoke("circles:delete", circleId),
   circles: () => ipcRenderer.invoke("circles:list"),
   guideUrl: () => ipcRenderer.invoke("site:guide"),
   openUrl: (url) => ipcRenderer.invoke("open:url", url),

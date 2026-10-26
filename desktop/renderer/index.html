@@ -3,24 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <title>Sentinel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="auth" class="auth">
     <div class="auth-card">
       <p class="eyebrow">Sentinel</p>
-      <h1>Work against a goal, not a blocklist.</h1>
-      <p class="lede">Sign in for personalized tasks, sessions, and analytics.</p>
+      <h1 id="auth-title">Sign in</h1>
+      <p class="lede">Same account as the website. Use it for sessions, analytics, and Circles.</p>
       <div class="tabs">
         <button type="button" id="tab-login" class="tab on">Sign in</button>
         <button type="button" id="tab-register" class="tab">Create account</button>
       </div>
-      <label>Email</label>
+      <div id="auth-name-wrap" class="hidden">
+        <label for="auth-name">Name</label>
+        <input id="auth-name" type="text" autocomplete="nickname" placeholder="What should we call you?">
+      </div>
+      <label for="auth-user">Email</label>
       <input id="auth-user" type="email" autocomplete="username">
-      <label>Password</label>
+      <label for="auth-pass">Password</label>
       <input id="auth-pass" type="password" autocomplete="current-password">
       <p id="auth-error" class="error"></p>
-      <button type="button" id="auth-submit" class="primary">Continue</button>
+      <button type="button" id="auth-submit" class="primary">Sign in</button>
     </div>
   </div>
 
@@ -48,7 +55,7 @@
       <section id="view-focus" class="view">
         <header class="page-head">
           <div>
-            <p class="eyebrow">Live session</p>
+            <p class="eyebrow" id="focus-greeting">Live session</p>
             <h2>What are you doing right now?</h2>
           </div>
           <span id="focus-pill" class="pill">Idle</span>
@@ -57,7 +64,7 @@
         <div id="key-banner" class="card hidden" style="margin-bottom:16px">
           <p class="eyebrow">Groq API key</p>
           <p class="copy">Add a free Groq key in Settings. Without it, Sentinel cannot classify windows.</p>
-          <div class="row">
+          <div class="row" style="margin-top:12px">
             <button type="button" id="goto-settings" class="primary" style="margin-top:0">Open Settings</button>
             <button type="button" id="open-groq-guide" class="ghost">How to get a key</button>
           </div>
@@ -82,16 +89,12 @@
           </div>
           <div class="card">
             <p class="eyebrow">Always allowed</p>
-            <p class="copy">Apps or sites that should never be marked off-task. Add Spotify, Notion, or khanacademy.org.</p>
+            <p class="copy">Type an app name or site (Spotify, khanacademy.org). Press Enter or Add. Click a chip to remove it.</p>
             <div id="focus-chips" class="chips"></div>
             <div id="focus-site-chips" class="chips"></div>
             <div class="row">
-              <input id="companion-add" placeholder="Add an app or site">
+              <input id="companion-add" placeholder="Type an app or site">
               <button type="button" id="companion-add-btn" class="ghost">Add</button>
-            </div>
-            <div class="row">
-              <button type="button" id="companion-now" class="ghost">Allow this app</button>
-              <button type="button" id="companion-site" class="ghost">Allow this site</button>
             </div>
           </div>
         </div>
@@ -140,6 +143,12 @@
             <tbody id="task-rows"></tbody>
           </table>
         </div>
+        <div class="card" style="margin-top:16px">
+          <p class="eyebrow">Past tasks</p>
+          <p class="copy">Delete a task to remove it and its session history from your account.</p>
+          <p id="task-error" class="error"></p>
+          <ul id="past-tasks" class="past-tasks"></ul>
+        </div>
       </section>
 
       <section id="view-circles" class="view hidden">
@@ -149,7 +158,7 @@
             <h2>Circles</h2>
           </div>
         </header>
-        <p class="copy">Compete on Intent Score this week: on-task minutes × focus share, plus points for honest rescues. Time wasted does not win.</p>
+        <p class="copy">Compete on Intent Score this week: on-task minutes × focus share, plus points for honest rescues. You can only be in one circle with the same name. Only the creator can delete a circle.</p>
         <div class="grid-2">
           <div class="card">
             <label>New circle name</label>
@@ -189,7 +198,7 @@
             <input id="grace" type="range" min="15" max="120" step="5">
             <span id="grace-val">45s</span>
           </label>
-          <p class="quiet">The model sees your goal, app, site, and the real tab or video title. Allow Accessibility, Screen Recording, and Automation (Chrome/Safari) when macOS asks. Edit always-allowed apps and sites on the Focus dashboard.</p>
+          <p class="quiet">The model sees your goal, app, site, and the real tab or video title. Allow Accessibility, Screen Recording, and Automation when macOS asks. Edit always-allowed apps and sites on Focus.</p>
           <button type="button" id="save-settings" class="primary">Save settings</button>
           <p id="settings-saved" class="quiet"></p>
         </div>

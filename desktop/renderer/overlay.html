@@ -3,45 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <title>Sentinel alert</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; width: 100%; height: 100%; background: transparent; font: 14px/1.4 "Avenir Next", sans-serif; color: #ece8dd; }
+    html, body {
+      margin: 0; width: 100%; height: 100%; background: transparent;
+      font: 14px/1.45 "IBM Plex Sans", "Segoe UI", sans-serif; color: #1b1914;
+    }
     .card {
       margin: 8px;
-      background: #1b1f27;
-      border: 1px solid #c56b56;
+      background: #fffcf6;
+      border: 1px solid #9b3d32;
+      border-radius: 8px;
       padding: 14px 16px;
+      box-shadow: 0 8px 24px rgba(27, 25, 20, 0.1);
     }
-    .kicker { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #c56b56; margin: 0 0 6px; }
-    h1 { font: 20px/1.2 Iowan Old Style, Palatino, Georgia, serif; margin: 0 0 6px; font-weight: 400; }
-    p { margin: 0 0 8px; color: #cfc9bc; }
+    .kicker { font-size: 12px; font-weight: 500; color: #9b3d32; margin: 0 0 6px; }
+    h1 { font: 600 18px/1.25 inherit; margin: 0 0 6px; letter-spacing: -0.02em; }
+    p { margin: 0 0 8px; color: #5a554c; }
     textarea {
       width: 100%; box-sizing: border-box; min-height: 70px;
-      background: #121418; color: #ece8dd; border: 1px solid #2a303a; padding: 8px;
+      background: #fff; color: #1b1914; border: 1px solid #d4cdb8;
+      border-radius: 5px; padding: 8px; font: inherit;
     }
-    button { margin-top: 8px; background: #c4a35a; border: 0; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+    button {
+      margin-top: 8px; background: #1b1914; color: #f6f1e6; border: 0;
+      border-radius: 5px; padding: 10px 16px; font-weight: 600; cursor: pointer;
+    }
     .hidden { display: none; }
-    #gate-error { color: #c56b56; }
+    #gate-error { color: #9b3d32; }
     .reset {
       margin: 8px;
       min-height: calc(100vh - 16px);
-      background: #1b1f27;
-      border: 1px solid #c4a35a;
+      background: #fffcf6;
+      border: 1px solid #d4cdb8;
+      border-radius: 8px;
       padding: 28px 24px 24px;
       text-align: center;
       box-sizing: border-box;
+      box-shadow: 0 8px 24px rgba(27, 25, 20, 0.08);
     }
-    .reset h1 { font-size: 26px; }
+    .reset .kicker { color: #7d6230; }
+    .reset h1 { font-size: 24px; }
     .orb {
       width: 88px;
       height: 88px;
       margin: 18px auto;
-      border: 3px solid #c4a35a;
+      border: 3px solid #7d6230;
       border-radius: 99px;
       transform: scale(0.72);
       animation: breathe 8s ease-in-out infinite;
     }
-    .phase { color: #c4a35a; letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; }
-    .count { font-size: 22px; color: #c4a35a; }
+    .phase { color: #7d6230; font-weight: 600; font-size: 12px; }
+    .count { font-size: 22px; color: #7d6230; font-weight: 600; }
     @keyframes breathe {
       0%, 100% { transform: scale(0.72); }
       50% { transform: scale(1.08); }

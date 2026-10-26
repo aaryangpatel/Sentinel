@@ -1,13 +1,10 @@
 const $ = (id) => document.getElementById(id);
 
-const COMPANION_PRESETS = ["Spotify", "Music", "Notes", "Calendar", "Notion", "Obsidian"];
-
 let mode = "login";
 let chart;
 let companionApps = ["Spotify", "Music", "Notes"];
 let companionSites = [];
-let lastAppName = "";
-let lastSite = "";
+let displayName = "";
 
 function show(id, on) {
   $(id).classList.toggle("hidden", !on);
@@ -55,10 +52,7 @@ function paintChipList(rootId, names, selected, onClick) {
 }
 
 function paintCompanions() {
-  const appNames = COMPANION_PRESETS.concat(
-    companionApps.filter((name) => !COMPANION_PRESETS.some((preset) => preset.toLowerCase() === name.toLowerCase()))
-  );
-  paintChipList("focus-chips", appNames, hasCompanion, toggleCompanion);
+  paintChipList("focus-chips", companionApps, () => true, toggleCompanion);
   paintChipList("focus-site-chips", companionSites, () => true, toggleSite);
 }
 
@@ -116,6 +110,10 @@ function setAuthMode(next) {
   mode = next;
   $("tab-login").classList.toggle("on", next === "login");
   $("tab-register").classList.toggle("on", next === "register");
+  show("auth-name-wrap", next === "register");
+  $("auth-title").textContent = next === "register" ? "Create account" : "Sign in";
+  $("auth-submit").textContent = next === "register" ? "Create account" : "Sign in";
+  $("auth-pass").autocomplete = next === "register" ? "new-password" : "current-password";
 }
 
 $("tab-login").onclick = () => setAuthMode("login");
@@ -125,8 +123,14 @@ $("auth-submit").onclick = async () => {
   $("auth-error").textContent = "";
   const username = $("auth-user").value.trim();
   const password = $("auth-pass").value;
+  const name = $("auth-name").value.trim();
+  if (mode === "register" && !name) {
+    $("auth-error").textContent = "Enter a name so Sentinel can address you.";
+    $("auth-name").focus();
+    return;
+  }
   const result = mode === "register"
-    ? await window.sentinel.register(username, password)
+    ? await window.sentinel.register(username, password, { name })
     : await window.sentinel.login(username, password);
   if (!result.ok) {
     $("auth-error").textContent = result.error || "Could not continue.";
@@ -145,7 +149,9 @@ async function boot() {
 function enter(user) {
   show("auth", false);
   show("shell", true);
-  $("who").textContent = user.email || user.username;
+  displayName = user.name || String(user.email || user.username || "").split("@")[0];
+  $("who").textContent = displayName;
+  $("focus-greeting").textContent = displayName ? `Hi, ${displayName}` : "Live session";
   if (user.settings) {
     $("provider").value = !user.settings.provider || user.settings.provider === "stub"
       ? "groq"
@@ -215,7 +221,7 @@ $("circle-create").onclick = async () => {
     return;
   }
   $("circle-name").value = "";
-  loadCircles();
+  await loadCircles();
 };
 
 $("circle-join").onclick = async () => {
@@ -226,7 +232,7 @@ $("circle-join").onclick = async () => {
     return;
   }
   $("circle-code").value = "";
-  loadCircles();
+  await loadCircles();
 };
 
 $("grace").oninput = () => {
@@ -306,26 +312,6 @@ $("companion-add").onkeydown = (event) => {
   }
 };
 
-$("companion-now").onclick = async () => {
-  if (!lastAppName) {
-    return;
-  }
-  if (!hasCompanion(lastAppName)) {
-    companionApps = companionApps.concat([lastAppName]);
-    await persistCompanions();
-  }
-};
-
-$("companion-site").onclick = async () => {
-  if (!lastSite || !looksLikeSite(lastSite)) {
-    return;
-  }
-  if (!hasSite(lastSite)) {
-    companionSites = companionSites.concat([normalizeSite(lastSite)]);
-    await persistCompanions();
-  }
-};
-
 $("day").onchange = loadAnalytics;
 $("task-filter").onchange = loadAnalytics;
 
@@ -361,8 +347,14 @@ function paintCircles(circles) {
     }).join("");
     const mine = (circle.members || []).find((member) => member.me);
     const badges = ((mine && mine.badges) || []).map((badge) => `<span class="badge">${escapeHtml(badge)}</span>`).join("") || "<span class=\"quiet\">Win badges by rescuing a session or staying on a real lecture.</span>";
+    const deleteBtn = circle.isOwner
+      ? `<button type="button" class="ghost circle-delete" data-id="${escapeHtml(circle.id)}">Delete circle</button>`
+      : "";
     card.innerHTML = `
-      <p class="eyebrow">${escapeHtml(circle.name)}</p>
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <p class="eyebrow" style="margin:0">${escapeHtml(circle.name)}</p>
+        ${deleteBtn}
+      </div>
       <p>Invite code <span class="code">${escapeHtml(circle.code)}</span> · Beat this week’s circle average of <b>${circle.average}</b></p>
       <table class="board">
         <thead><tr><th>#</th><th>Friend</th><th>Intent</th><th>On</th><th>Share</th><th>Streak</th><th>Rescues</th></tr></thead>
@@ -371,6 +363,29 @@ function paintCircles(circles) {
       <p class="eyebrow" style="margin-top:16px">Your badges</p>
       <div>${badges}</div>`;
     root.appendChild(card);
+  });
+  root.querySelectorAll(".circle-delete").forEach((button) => {
+    button.onclick = async () => {
+      $("circle-error").textContent = "";
+      const circleId = button.dataset.id;
+      const card = button.closest(".card");
+      button.disabled = true;
+      const result = await window.sentinel.deleteCircle(circleId);
+      if (!result.ok) {
+        button.disabled = false;
+        $("circle-error").textContent = result.error || "Could not delete that circle.";
+        return;
+      }
+      if (card) {
+        card.remove();
+      }
+      if (!$("circle-list").querySelector(".card")) {
+        paintCircles([]);
+        return;
+      }
+      paintHuddle([]);
+      loadCircles();
+    };
   });
   paintHuddle(circles);
 }
@@ -391,6 +406,72 @@ function fmtMin(ms) {
   return minutes + "m";
 }
 
+function formatTaskDay(ts) {
+  if (!ts) {
+    return "";
+  }
+  const d = new Date(ts);
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function paintPastTasks(tasks) {
+  const root = $("past-tasks");
+  const error = $("task-error");
+  if (error) {
+    error.textContent = "";
+  }
+  if (!root) {
+    return;
+  }
+  root.innerHTML = "";
+  if (!tasks.length) {
+    root.innerHTML = "<li class=\"quiet\">No saved tasks yet.</li>";
+    return;
+  }
+  tasks.forEach((task) => {
+    const item = document.createElement("li");
+    item.innerHTML = `
+      <span class="goal">${escapeHtml(task.goal)}</span>
+      <span class="when">${escapeHtml(formatTaskDay(task.createdAt))}</span>
+      <button type="button" class="ghost task-delete" data-id="${escapeHtml(task.id)}">Delete</button>`;
+    root.appendChild(item);
+  });
+  root.querySelectorAll(".task-delete").forEach((button) => {
+    button.onclick = async () => {
+      if (error) {
+        error.textContent = "";
+      }
+      const taskId = button.dataset.id;
+      const row = button.closest("li");
+      button.disabled = true;
+      const result = await window.sentinel.deleteTask(taskId);
+      if (!result.ok) {
+        button.disabled = false;
+        if (error) {
+          error.textContent = result.error || "Could not delete that task.";
+        }
+        return;
+      }
+      if (row) {
+        row.remove();
+      }
+      if ($("task-filter").value === taskId) {
+        $("task-filter").value = "";
+      }
+      const option = $("task-filter").querySelector(`option[value="${CSS.escape(taskId)}"]`);
+      if (option) {
+        option.remove();
+      }
+      if (!$("past-tasks").querySelector(".task-delete")) {
+        $("past-tasks").innerHTML = "<li class=\"quiet\">No saved tasks yet.</li>";
+      }
+      loadAnalytics();
+    };
+  });
+}
+
 async function loadAnalytics() {
   const tasks = await window.sentinel.tasks();
   const select = $("task-filter");
@@ -403,6 +484,7 @@ async function loadAnalytics() {
     select.appendChild(option);
   });
   select.value = current;
+  paintPastTasks(tasks || []);
   const data = await window.sentinel.analytics($("day").value, select.value || null);
   if (!data) {
     return;
@@ -443,12 +525,12 @@ async function loadAnalytics() {
       labels: ["On-task", "Ambiguous", "Off-task"],
       datasets: [{
         data: [data.onMs, data.ambMs, data.offMs],
-        backgroundColor: ["#c4a35a", "#7d8896", "#c56b56"],
+        backgroundColor: ["#3d6b45", "#c4b89a", "#b54a3c"],
         borderWidth: 0
       }]
     },
     options: {
-      plugins: { legend: { labels: { color: "#ece8dd" } } }
+      plugins: { legend: { labels: { color: "#5a554c" } } }
     }
   });
 }
@@ -463,11 +545,9 @@ function escapeHtml(value) {
 function paintStatus(status) {
   const activity = status.activity;
   if (activity) {
-    lastAppName = activity.app || "";
-    lastSite = activity.domain || "";
     $("now-app").textContent = activity.app || "Unknown app";
     const bits = [activity.domain, activity.title || activity.path].filter(Boolean);
-    $("now-meta").textContent = bits.join(" · ") || "Waiting for the tab title… allow Automation for Chrome."
+    $("now-meta").textContent = bits.join(" · ") || "Waiting for the tab title… allow Automation for Chrome.";
   }
   $("now-class").textContent = status.lastClass || "—";
   $("now-reason").textContent = status.lastReason || "";
@@ -498,5 +578,6 @@ window.sentinel.onToast((payload) => {
   setTimeout(() => toast.classList.add("hidden"), 5000);
 });
 
+setAuthMode("login");
 paintCompanions();
 boot();

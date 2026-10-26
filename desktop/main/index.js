@@ -172,8 +172,8 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
-ipcMain.handle("auth:register", async (_event, email, password, companionApps) => {
-  const result = await firebase.register(email, password, { companionApps });
+ipcMain.handle("auth:register", async (_event, email, password, extras) => {
+  const result = await firebase.register(email, password, extras || {});
   if (result.ok) {
     attachUser(result.user);
   }
@@ -249,17 +249,30 @@ ipcMain.handle("tasks:list", async () => {
   }
   return firebase.listTasks(currentUser.id);
 });
+
+ipcMain.handle("tasks:delete", async (_event, taskId) => {
+  if (!currentUser) {
+    return { ok: false, error: "Not signed in." };
+  }
+  return firebase.deleteTask(currentUser.id, taskId);
+});
 ipcMain.handle("circles:create", async (_event, name) => {
   if (!currentUser) {
     return { ok: false, error: "Not signed in." };
   }
-  return { ok: true, circle: await firebase.createCircle(currentUser.id, currentUser.email, name) };
+  return firebase.createCircle(currentUser.id, currentUser.email, name);
 });
 ipcMain.handle("circles:join", async (_event, code) => {
   if (!currentUser) {
     return { ok: false, error: "Not signed in." };
   }
   return firebase.joinCircle(currentUser.id, currentUser.email, code);
+});
+ipcMain.handle("circles:delete", async (_event, circleId) => {
+  if (!currentUser) {
+    return { ok: false, error: "Not signed in." };
+  }
+  return firebase.deleteCircle(currentUser.id, circleId);
 });
 ipcMain.handle("circles:list", async () => {
   if (!currentUser) {
