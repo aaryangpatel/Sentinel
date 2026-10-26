@@ -201,11 +201,6 @@ async function classifyActivity(settings, goal, activity, memory) {
   };
 }
 
-/**
- * Rough app-name fallback when the model refuses to pick on-task/off-task.
- * @param {string} appName frontmost application name
- * @returns {boolean} true when the app is typically used for school/work
- */
 function likelyWorkApp(appName) {
   const app = String(appName || "").trim().toLowerCase();
   if (!app) {

@@ -12,6 +12,14 @@ export default function Home() {
         </p>
         <div className="cta">
           <Link className="btn lg" to="/download">Download for Mac</Link>
+          <a
+            className="btn ghost lg"
+            href="https://github.com/aaryangpatel/Sentinel"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source
+          </a>
         </div>
         <p className="quiet hero-note">macOS 12 or later · Apple silicon and Intel</p>
         <ol className="start">

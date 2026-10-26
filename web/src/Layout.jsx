@@ -17,7 +17,6 @@ export default function Layout({ children, center }) {
       <footer>
         <div className="nav-inner">
           <span>Aaryan Patel</span>
-          <a href="https://github.com/aaryangpatel/Sentinel">Source</a>
         </div>
       </footer>
     </div>
