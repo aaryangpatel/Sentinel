@@ -9,8 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "chart.js": "^4.4.6",
-    "firebase": "^12.19.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.6.0"

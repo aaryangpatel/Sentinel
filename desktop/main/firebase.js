@@ -20,7 +20,8 @@ const {
   collection,
   query,
   where,
-  getDocs
+  getDocs,
+  deleteDoc
 } = require("firebase/firestore");
 
 const DEFAULT_SETTINGS = {
@@ -180,29 +181,55 @@ function authError(err) {
   return messages[code] || (err && err.message) || "Firebase request failed.";
 }
 
-function publicUser(uid, email, settings) {
+function publicUser(uid, email, settings, name) {
   return {
     id: uid,
     email,
     username: email,
+    name: name || displayName(email),
     settings: settings || DEFAULT_SETTINGS
   };
 }
 
-async function ensureProfile(uid, email, initialSettings) {
+/**
+ * Prefer the name saved on the user document; fall back to the email local-part.
+ */
+async function resolveUserName(uid, email) {
+  if (!uid) {
+    return displayName(email);
+  }
+  const snap = await getDoc(doc(firestore, "users", uid));
+  if (snap.exists() && snap.data().name) {
+    return String(snap.data().name).trim() || displayName(email);
+  }
+  return displayName(email);
+}
+
+async function ensureProfile(uid, email, extras) {
+  const payload = extras && typeof extras === "object" ? extras : {};
+  const givenName = String(payload.name || "").trim();
+  const settingsExtras = Object.assign({}, payload);
+  delete settingsExtras.name;
+
   const ref = doc(firestore, "users", uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    const settings = mergeSettings(DEFAULT_SETTINGS, initialSettings);
+    const settings = mergeSettings(DEFAULT_SETTINGS, settingsExtras);
+    const name = givenName || displayName(email);
     await setDoc(ref, {
       email,
+      name,
       settings,
       createdAt: Date.now()
     });
-    return publicUser(uid, email, settings);
+    return publicUser(uid, email, settings, name);
   }
   const data = snap.data();
-  return publicUser(uid, data.email || email, mergeSettings(data.settings));
+  const name = givenName || data.name || displayName(data.email || email);
+  if (givenName && givenName !== data.name) {
+    await setDoc(ref, Object.assign({}, data, { name: givenName }), { merge: true });
+  }
+  return publicUser(uid, data.email || email, mergeSettings(data.settings), name);
 }
 
 async function restoreUser() {
@@ -293,6 +320,33 @@ async function listTasks(userId) {
   });
   tasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return tasks;
+}
+
+/**
+ * Delete a task and every analytics event tied to it.
+ */
+async function deleteTask(userId, taskId) {
+  init();
+  const id = String(taskId || "").trim();
+  if (!id) {
+    return { ok: false, error: "No task selected." };
+  }
+  const ref = doc(firestore, "tasks", id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return { ok: false, error: "That task is already gone." };
+  }
+  if (snap.data().userId !== userId) {
+    return { ok: false, error: "You can only delete your own tasks." };
+  }
+  const events = await getDocs(query(collection(firestore, "events"), where("taskId", "==", id)));
+  for (const row of events.docs) {
+    if (row.data().userId === userId) {
+      await deleteDoc(row.ref);
+    }
+  }
+  await deleteDoc(ref);
+  return { ok: true };
 }
 
 async function appendEvent(event) {
@@ -397,7 +451,8 @@ function intentScore(onMs, offMs, rescues) {
 }
 
 function displayName(email) {
-  return String(email || "friend").split("@")[0];
+  const local = String(email || "friend").split("@")[0];
+  return local || "friend";
 }
 
 function randomCode() {
@@ -526,10 +581,11 @@ async function publishWeekly(userId, email) {
   init();
   const week = weekKey();
   const rollup = await rollupUser(userId);
+  const name = await resolveUserName(userId, email);
   const body = {
     userId,
     email,
-    name: displayName(email),
+    name,
     weekKey: week,
     onMs: rollup.onMs,
     offMs: rollup.offMs,
@@ -549,23 +605,56 @@ async function publishWeekly(userId, email) {
   return body;
 }
 
+function normalizeCircleName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * True if this user is already in a circle whose name matches (case-insensitive).
+ */
+async function userInCircleNamed(userId, label, exceptCircleId) {
+  const key = normalizeCircleName(label);
+  if (!key) {
+    return false;
+  }
+  const mine = await getDocs(query(collection(firestore, "circleMembers"), where("userId", "==", userId)));
+  for (const row of mine.docs) {
+    const circleId = row.data().circleId;
+    if (exceptCircleId && circleId === exceptCircleId) {
+      continue;
+    }
+    const circleSnap = await getDoc(doc(firestore, "circles", circleId));
+    if (circleSnap.exists() && normalizeCircleName(circleSnap.data().name) === key) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function createCircle(userId, email, name) {
   init();
-  const label = String(name || "").trim() || "Study circle";
+  const label = String(name || "").trim().replace(/\s+/g, " ");
+  if (!label) {
+    return { ok: false, error: "Enter a circle name." };
+  }
+  if (await userInCircleNamed(userId, label)) {
+    return { ok: false, error: "You are already in a circle named “" + label + "”." };
+  }
   const ref = await addDoc(collection(firestore, "circles"), {
     name: label,
     code: randomCode(),
     createdBy: userId,
     createdAt: Date.now()
   });
+  const memberName = await resolveUserName(userId, email);
   await setDoc(doc(firestore, "circleMembers", ref.id + "_" + userId), {
     circleId: ref.id,
     userId,
     email,
-    name: displayName(email),
+    name: memberName,
     joinedAt: Date.now()
   });
-  return getCircle(ref.id, userId);
+  return { ok: true, circle: await getCircle(ref.id, userId) };
 }
 
 async function joinCircle(userId, email, code) {
@@ -576,14 +665,58 @@ async function joinCircle(userId, email, code) {
     return { ok: false, error: "No circle uses that code." };
   }
   const circle = snap.docs[0];
-  await setDoc(doc(firestore, "circleMembers", circle.id + "_" + userId), {
+  const data = circle.data();
+  const memberRef = doc(firestore, "circleMembers", circle.id + "_" + userId);
+  const existing = await getDoc(memberRef);
+  if (existing.exists()) {
+    return { ok: true, circle: await getCircle(circle.id, userId) };
+  }
+  if (await userInCircleNamed(userId, data.name, circle.id)) {
+    return { ok: false, error: "You are already in a circle named “" + data.name + "”." };
+  }
+  const memberName = await resolveUserName(userId, email);
+  await setDoc(memberRef, {
     circleId: circle.id,
     userId,
     email,
-    name: displayName(email),
+    name: memberName,
     joinedAt: Date.now()
   });
-  return { ok: true, circle: await getCircle(circle.id, userId) };
+  const loaded = await getCircle(circle.id, userId);
+  return {
+    ok: true,
+    circle: loaded || {
+      id: circle.id,
+      name: data.name,
+      code: data.code,
+      createdBy: data.createdBy,
+      members: [{ userId, name: memberName, me: true, score: 0, onMs: 0, offMs: 0, streak: 0, rescues: 0, badges: [] }],
+      huddle: [],
+      average: 0,
+      isOwner: data.createdBy === userId
+    }
+  };
+}
+
+/**
+ * Delete a circle and every membership. Only the creator may do this.
+ */
+async function deleteCircle(userId, circleId) {
+  init();
+  const ref = doc(firestore, "circles", circleId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return { ok: false, error: "That circle is already gone." };
+  }
+  if (snap.data().createdBy !== userId) {
+    return { ok: false, error: "Only the person who created the circle can delete it." };
+  }
+  const members = await getDocs(query(collection(firestore, "circleMembers"), where("circleId", "==", circleId)));
+  for (const row of members.docs) {
+    await deleteDoc(row.ref);
+  }
+  await deleteDoc(ref);
+  return { ok: true };
 }
 
 async function getCircle(circleId, viewerId) {
@@ -604,9 +737,11 @@ async function getCircle(circleId, viewerId) {
     };
     const profileSnap = await getDoc(doc(firestore, "profiles", member.userId));
     const profile = profileSnap.exists() ? profileSnap.data() : {};
+    // Use the name saved on the membership — do not read other users' private docs.
+    const label = String(member.name || "").trim() || displayName(member.email);
     members.push({
       userId: member.userId,
-      name: member.name || displayName(member.email),
+      name: label,
       email: member.email,
       score: stats.score || 0,
       onMs: stats.onMs || 0,
@@ -618,7 +753,7 @@ async function getCircle(circleId, viewerId) {
     });
     if (profile.focus && profile.goal) {
       huddle.push({
-        name: member.name || displayName(member.email),
+        name: label,
         goal: profile.goal,
         me: member.userId === viewerId
       });
@@ -628,7 +763,13 @@ async function getCircle(circleId, viewerId) {
   const average = members.length
     ? Math.round(members.reduce((sum, row) => sum + row.score, 0) / members.length)
     : 0;
-  return Object.assign({ members, huddle, average, weekKey: week }, circle);
+  return Object.assign({
+    members,
+    huddle,
+    average,
+    weekKey: week,
+    isOwner: circle.createdBy === viewerId
+  }, circle);
 }
 
 async function listCircles(userId) {
@@ -639,6 +780,9 @@ async function listCircles(userId) {
     const circle = await getCircle(row.data().circleId, userId);
     if (circle) {
       circles.push(circle);
+    } else {
+      // Circle was deleted — drop the leftover membership so the UI stays clean.
+      await deleteDoc(row.ref);
     }
   }
   return circles;
@@ -653,6 +797,7 @@ module.exports = {
   saveSettings,
   createTask,
   listTasks,
+  deleteTask,
   appendEvent,
   analytics,
   localDayKey,
@@ -661,6 +806,7 @@ module.exports = {
   setPresence,
   createCircle,
   joinCircle,
+  deleteCircle,
   listCircles,
   DEFAULT_SETTINGS
 };
