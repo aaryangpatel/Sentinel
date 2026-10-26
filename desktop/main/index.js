@@ -50,17 +50,23 @@ function createOverlayWindow() {
     y: display.y + 16,
     frame: false,
     transparent: true,
+    // Fully clear — otherwise macOS fills the transparent area with black.
+    backgroundColor: "#00000000",
+    hasShadow: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
+    focusable: true,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "..", "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false
     }
   });
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  overlayWindow.setBackgroundColor("#00000000");
   overlayWindow.loadFile(path.join(__dirname, "..", "renderer", "overlay.html"));
 }
 
